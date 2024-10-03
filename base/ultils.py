@@ -26,6 +26,7 @@ import torch
 import math
 from ultralytics.utils import ops
 from base.constants import *
+from base.extention import *
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def removefile():
@@ -223,7 +224,7 @@ class Base:
             'HBB': self.run_func_hbb,
             'OBB': self.run_func_obb
         }
-        self.tuple = track_conn()
+        self.tuple = setupTools.track_conn()
 
     def connect_database(self):
         cursor, db_connection  = self.database.Connect_MySQLServer()
@@ -417,8 +418,7 @@ class Base:
         xywhr_list = obb_dict.xywhr.tolist()
         cls_list = obb_dict.cls.tolist()
         conf_list = obb_dict.conf.tolist()
-        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect= [],[],[],False,'ERROR'
-        valid = []
+        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect,valid = [],[],[],False,'ERROR',[]
         for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
@@ -427,17 +427,22 @@ class Base:
                             or xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max'] \
                             or int(conf*100) < setting['cmpnt_conf']:
                         list_remove.append(int(index))
-                    if float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min'] or float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']:
-                        results_detect,ok_variable = 'NG',True
-                        list_label_ng.append(setting['label_name']) 
-                        list_remove.append(int(index))  
-                    # id,obj_x,obj_y,x,y = tracking_id(self.tuple,xywhr[0],xywhr[1])
-                    # id,obj_x,obj_y,x,y,conn,val = check_x_y(id,obj_x,obj_y,x,y)
-                    # valid.append((id, obj_x, obj_y, x, y, conn, val))
+                    if CHECK_ANGLE:
+                        if float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min'] or float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']:
+                            results_detect,ok_variable = 'NG',True
+                            list_label_ng.append(setting['label_name']) 
+                            list_remove.append(int(index))  
+                    if CHECK_ITEM_LINE:
+                        if setting['label_name'] == ITEM:
+                            if xywhr[0] and xywhr[1] :
+                                id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
+                                id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
+                                valid.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn))
+                                if not val:
+                                    results_detect,ok_variable = 'NG',True 
                     allowed_classes.append(results[0].names[int(cls)])
                 else:
-                    list_remove.append(int(index))   
-            
+                    list_remove.append(int(index))          
         for model_name,setting in settings_dict.items():
             if setting['join_detect'] and setting['OK_jont']: 
                 if allowed_classes.count(setting['label_name']) != setting['num_labels']:
@@ -453,8 +458,9 @@ class Base:
         show_img = np.squeeze(results[0].extract_npy(list_remove=list_remove))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
-        # valid = sorted(valid, key=lambda item: item[0])
-        return output_image, results_detect, list_label_ng
+        valid = sorted(valid, key=lambda item: item[0])
+        valid = valid if valid else []
+        return output_image, results_detect, list_label_ng,valid
     
     def _make_cls(self,image_path_mks_cls,results,model_settings):  
         with open(image_path_mks_cls[:-3] + 'txt', "a") as file:

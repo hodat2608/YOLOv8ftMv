@@ -25,16 +25,17 @@ import sys
 import os
 from functools import partial 
 from MvsExportImgBuffer.MvExportArrayBuff import *
+from base.constants import *
 import queue
-class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
 
+class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def __init__(self,notebook,*args, **kwargs):
         super(Model_Camera_1, self).__init__(*args, **kwargs)
         super().__init__()
         torch.cuda.set_device(0)
-        self.request = LoadDiviceEnvCam(0)
-        self.request.enum_devices()
-        self.request.open_device()
+        # self.request = LoadDiviceEnvCam(0)
+        # self.request.enum_devices()
+        # self.request.open_device()
         self.task= queue.Queue()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.database = MySQL_Connection("127.0.0.1","root1","987654321","connect_database_model") 
@@ -80,18 +81,16 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             'HBB': self.run_func_hbb,
             'OBB': self.run_func_obb
         }
-
         display_camera_tab = ttk.Frame(notebook)
         notebook.add(display_camera_tab, text="Display Camera")
         self.tab = ttk.Frame(display_camera_tab)
         self.tab.pack(side=tk.LEFT, fill="both", expand=True)
-
         self.settings_notebook = ttk.Notebook(notebook)
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
-
         self.configuration_frame()
         self.layout_camframe()
         self.funcloop()
+        self.table = CFG_Table(self.frame_table)
 
     def on_option_change(self,event,Frame_2):
         selected_format = self.datasets_format_model.get()
@@ -107,12 +106,10 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         width = 800
         height = 800
         t1 = time.time()
-        # for widget in self.img_frame.winfo_children():
-        #     widget.destroy()
         if self.img_buffer == []: 
-            print('no img')
+            pass
         else:
-            image_result, results_detect, list_label_ng = self.process_image_func(self.img_buffer[0], width, height) 
+            image_result, results_detect, list_label_ng,valid = self.process_image_func(self.img_buffer[0], width, height) 
             self.result_detection.config(text=results_detect, fg='green' if results_detect == 'OK' else 'red')
             list_label_ng = ','.join(list_label_ng)
             img_pil = Image.fromarray(image_result)
@@ -127,6 +124,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
             canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
             canvas.create_text(10, 70, anchor=tk.NW, text=f'Label: {list_label_ng}', fill='red', font=('Segoe UI', 20))
+            self.table.check_for_updates(valid)
             self.img_buffer = []
             self.request.stop_grabbing()
 
@@ -142,7 +140,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
                 img1_orgin = cv2.imread(filename)
                 for widget in self.img_frame.winfo_children():
                     widget.destroy()
-                image_result, results_detect, list_label_ng = self.process_image_func(img1_orgin, width, height) 
+                image_result, results_detect, list_label_ng,valid = self.process_image_func(img1_orgin, width, height) 
                 self.result_detection.config(text=results_detect, fg='green' if results_detect == 'OK' else 'red')
                 list_label_ng = ','.join(list_label_ng)
                 img_pil = Image.fromarray(image_result)
@@ -157,44 +155,50 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
                 canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
                 canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
                 canvas.create_text(10, 70, anchor=tk.NW, text=f'Label: {list_label_ng}', fill='red', font=('Segoe UI', 20))
+                self.table.check_for_updates(valid)
                 os.remove(filename)
 
     def funcloop(self):
-        self.extract()
-        self.img_frame.after(50, self.funcloop)
+        self.extract_fh()
+        self.img_frame.after(100, self.funcloop)
 
     def layout_camframe(self):
         style = ttk.Style()
         style.configure("Custom.TLabelframe", borderwidth=0)
         style.configure("Custom.TLabelframe.Label", background="white", foreground="white")
-
-        frame = ttk.LabelFrame(self.tab, width=900, height=900, style="Custom.TLabelframe")
+        canvas = tk.Canvas(self.tab)
+        scrollbar_y = tk.Scrollbar(self.tab, orient="vertical", command=canvas.yview)
+        scrollbar_x = tk.Scrollbar(self.tab, orient="horizontal", command=canvas.xview)
+        content_frame = ttk.Frame(canvas)
+        content_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=content_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar_y.set)
+        canvas.configure(xscrollcommand=scrollbar_x.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar_y.grid(row=0, column=1, sticky="ns")
+        scrollbar_x.grid(row=1, column=0, sticky="ew")
+        self.tab.grid_rowconfigure(0, weight=1)
+        self.tab.grid_columnconfigure(0, weight=1)
+        frame = ttk.LabelFrame(content_frame, width=900, height=900, style="Custom.TLabelframe")
         frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-
         self.img_frame = ttk.LabelFrame(frame, text=f"Camera", width=800, height=800)
         self.img_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
-
         time_frame = ttk.LabelFrame(frame, text=f"Time Processing Camera", width=300, height=100)
         time_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-
         self.time_processing_output = tk.Label(time_frame, text='0 ms', fg='black', font=('Segoe UI', 30), width=10, height=1, anchor='center')
         self.time_processing_output.grid(row=0, column=0, padx=10, pady=10, sticky='ew')
-
         result = ttk.LabelFrame(frame, text=f"Result Camera", width=300, height=100)
         result.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
-
         self.result_detection = tk.Label(result, text='ERROR', fg='red', font=('Segoe UI', 30), width=10, height=1, anchor='center')
         self.result_detection.grid(row=0, column=0, padx=10, pady=10, sticky='ew')
-
         bonus = ttk.LabelFrame(frame, text=f"Bonus", width=300, height=100)
         bonus.grid(row=1, column=2, padx=10, pady=5, sticky="ew")
-
         bonus_test = tk.Label(bonus, text='Bonus', fg='red', font=('Segoe UI', 30), width=10, height=1, anchor='center')
         bonus_test.grid(row=0, column=0, padx=10, pady=10, sticky='ew')
-
         move = tk.Button(bonus, text="Test time handle", command=lambda: self.mohica())
         move.grid(row=0, column=1, padx=(0, 8), pady=3, sticky="w", ipadx=5, ipady=2)
-
+        self.frame_table = ttk.LabelFrame(content_frame, width=900, height=900, style="Custom.TLabelframe")
+        self.frame_table.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_columnconfigure(1, weight=1)
         frame.grid_columnconfigure(2, weight=1)

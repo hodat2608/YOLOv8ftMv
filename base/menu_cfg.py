@@ -127,8 +127,7 @@ def video(notebook, window):
 def training_data(notebook, window):
     settings_notebook = ttk.Notebook(notebook)
     notebook.add(settings_notebook, text="Training")
-    tab_camera_1 = Training_Data()
-    tab_camera_1.layout(settings_notebook,window)
+    Training_Data(settings_notebook,window)
 
 def confirm_exit(window):
     confirm_exit = messagebox.askokcancel("Confirm", "Are you sure to exit ?")

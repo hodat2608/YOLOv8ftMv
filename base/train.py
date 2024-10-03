@@ -19,7 +19,7 @@ import cv2
 from base.ultils import *
 from base.constants import *
 class Training_Data(Base):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, settings_notebook,window,*args, **kwargs):
         super(Training_Data, self).__init__(*args, **kwargs)
         super().__init__()
         torch.cuda.set_device(0)
@@ -37,18 +37,21 @@ class Training_Data(Base):
         self.device_model=None
         self.source_save_result_entry=None
         self.excute_button=None
+        self.settings_notebook = settings_notebook
+        self.window = window
         self.myclasses = []
+        self.layout()
 
     def format_params_xywhr2xyxyxyxy(self, des_path, progress_label):
         return super().format_params_xywhr2xyxyxyxy(des_path, progress_label)
 
     def get_params_xywhr2xyxyxyxy_original_ops(self, des_path, progress_label):
-        return get_params_xywhr2xyxyxyxy_original_ops(des_path, progress_label)
+        return setupTools.get_params_xywhr2xyxyxyxy_original_ops(des_path, progress_label)
 
-    def layout(self,settings_notebook,window):
+    def layout(self):
        
-        canvas1 = tk.Canvas(settings_notebook)
-        scrollbar = ttk.Scrollbar(settings_notebook, orient="vertical", command=canvas1.yview)
+        canvas1 = tk.Canvas(self.settings_notebook)
+        scrollbar = ttk.Scrollbar(self.settings_notebook, orient="vertical", command=canvas1.yview)
         scrollable_frame = ttk.Frame(canvas1)
 
         scrollable_frame.bind(
@@ -64,18 +67,18 @@ class Training_Data(Base):
         canvas1.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        settings_notebook.grid_columnconfigure(0, weight=1)
-        settings_notebook.grid_rowconfigure(0, weight=1)
+        self.settings_notebook.grid_columnconfigure(0, weight=1)
+        self.settings_notebook.grid_rowconfigure(0, weight=1)
 
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
 
         frame_width = screen_width // 2
         frame_height = screen_height // 2
 
 
-        Frame_1 = ttk.LabelFrame(settings_notebook, text="Configuration", width=frame_width, height=frame_height)
-        Frame_2 = ttk.LabelFrame(settings_notebook, text="Console", width=frame_width, height=frame_height)
+        Frame_1 = ttk.LabelFrame(self.settings_notebook, text="Configuration", width=frame_width, height=frame_height)
+        Frame_2 = ttk.LabelFrame(self.settings_notebook, text="Console", width=frame_width, height=frame_height)
 
         Frame_1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")  
         Frame_2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -468,7 +471,7 @@ class Training_Data(Base):
                 f'--name {str(self.name_results_entry.get())} '
                 f'--workers {str(self.workers.get())} '
                 f'--patience {str(self.patience_model.get())} '
-                f'--cache {str(cache_option(self.cache.get()))} '  
+                f'--cache {str(setupTools.cache_option(self.cache.get()))} '  
                 f'--optimizer {str(self.optimizer_model.get())} '
                 )
 

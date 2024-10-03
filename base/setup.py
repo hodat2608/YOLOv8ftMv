@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--patience', type=int, default=100, help='EarlyStopping patience (epochs without improvement)')
     parser.add_argument('--imgsz', type=int, default=640, help="Image size for training.")
     parser.add_argument('--batch', type=int, default=2, help="Batch size for training.")
-    parser.add_argument('--cache', type=str2cache, nargs='?', default=False, help="Caching options: True (cache in RAM), 'disk' (cache on disk), or False (disable caching).")
+    parser.add_argument('--cache', type=setupTools.str2cache, nargs='?', default=False, help="Caching options: True (cache in RAM), 'disk' (cache on disk), or False (disable caching).")
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda', 'mps'], default=None, help="Device to use for training (cpu or cuda).")
     parser.add_argument('--project', type=str, default=None, help="Device to use for training (cpu or cuda).")
     parser.add_argument('--workers', type=int, default=2, help='max dataloader workers (per RANK in DDP mode)')
