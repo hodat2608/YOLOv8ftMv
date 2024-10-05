@@ -5,7 +5,6 @@ ultralytics_main_dir = current_dir
 sys.path.append(str(ultralytics_main_dir))
 import root_path
 import tkinter as tk
-# from model_1 import *
 from base.train import *
 from base.extract_vid import *
 from tkinter import ttk
@@ -15,7 +14,6 @@ from tkinter import *
 import os,subprocess
 from tkinter import filedialog
 from tkinter import messagebox
-# from base.menu import *
 from base.labling import *
 from base.menu_cfg import *
 from base.model_1_config import *

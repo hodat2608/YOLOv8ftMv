@@ -49,14 +49,14 @@ class MySQL_Connection():
         self.passwd = passwd
         self.database = database
 
-    # def Connect_MySQLServer(self):
-    #         db_connection = mysql.connector.connect(
-    #         host= self.host,
-    #         user=self.user, 
-    #         passwd=self.passwd,
-    #         database=self.database)     
-    #         cursor = db_connection.cursor()
-    #         return cursor,db_connection
+    def Connect_MySQLServer_root(self):
+            db_connection = mysql.connector.connect(
+            host= self.host,
+            user=self.user, 
+            passwd=self.passwd,
+            database=self.database)     
+            cursor = db_connection.cursor()
+            return cursor,db_connection
 
     def check_connection(self):
         _,db_connection = self.Connect_MySQLServer()
@@ -235,9 +235,9 @@ class Base:
     def check_connect_database(self):
         cursor, db_connection = self.database.Connect_MySQLServer()
         if cursor is not None and db_connection is not None:
-            print("Database connection successful")
+            pass
         else:
-            print("Database connection failed")
+            messagebox.showwarning('Warning','Connection to database failed!')
         return cursor, db_connection
     
     def save_params_model(self):
@@ -432,7 +432,7 @@ class Base:
                             results_detect,ok_variable = 'NG',True
                             list_label_ng.append(setting['label_name']) 
                             list_remove.append(int(index))  
-                    if CHECK_ITEM_LINE:
+                    if CHECK_OBJECTS_COORDINATES:
                         if setting['label_name'] == ITEM:
                             if xywhr[0] and xywhr[1] :
                                 id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
