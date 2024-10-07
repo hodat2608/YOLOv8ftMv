@@ -6,9 +6,8 @@ import tkinter as tk
 from tkinter import ttk
 from base.extention import *
 
-
 class CFG_Table(tk.Tk):
-    def __init__(self,frame_n):
+    def __init__(self, frame_n):
         style = ttk.Style()
         style.theme_use("default")
         style.configure("Treeview.Heading", font=("Arial", 10, "bold"), anchor="center")
@@ -17,7 +16,8 @@ class CFG_Table(tk.Tk):
         style.configure("Treeview", background="white", foreground="black")
         style.configure("Treeview.Row", background="#f2f2f2", foreground="black")
         style.map("Treeview", background=[("selected", "#ececec")])
-        self.tree = ttk.Treeview(frame_n, columns=("No.", "Default_X", "Default_Y", "Result_X", "Result_Y", 'Angle', "State"), show="headings", height=5)
+        style.configure("ng_row", foreground="red")
+        self.tree = ttk.Treeview(frame_n, columns=("No.", "Default_X", "Default_Y", "Result_X", "Result_Y", 'Angle', "Status"), show="headings", height=5)
         self.tree.heading("No.", text="No.", anchor="center")
         self.tree.heading("Default_X", text="Default_X", anchor="center") 
         self.tree.heading("Default_Y", text="Default_Y", anchor="center") 
@@ -26,10 +26,10 @@ class CFG_Table(tk.Tk):
         self.tree.heading("Angle", text="Angle", anchor="center")
         self.tree.heading("Status", text="Status", anchor="center")
         self.tree.column("No.", width=50, anchor="center")
-        self.tree.column("Default_X", width=150, anchor="center")  
-        self.tree.column("Default_Y", width=150, anchor="center") 
-        self.tree.column("Result_X", width=150, anchor="center")  
-        self.tree.column("Result_Y", width=150, anchor="center")  
+        self.tree.column("Default_X", width=170, anchor="center")  
+        self.tree.column("Default_Y", width=170, anchor="center") 
+        self.tree.column("Result_X", width=170, anchor="center")  
+        self.tree.column("Result_Y", width=170, anchor="center")  
         self.tree.column("Angle", width=100, anchor="center")
         self.tree.column("Status", width=80, anchor="center")
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
@@ -40,13 +40,17 @@ class CFG_Table(tk.Tk):
                 self.tree.delete(row)
         for row in data:
             No = row[0]
-            Default_X = f"{round(row[1], 2)}"
-            Default_Y = f"{round(row[2], 2)}"
-            Detect_X = f"{round(row[3], 2)}"
-            Detect_Y = f"{round(row[4], 2)}"
+            Default_X = f"{round(row[3],1)}"
+            Default_Y = f"{round(row[4],1)}"
+            Detect_X = f"{round(row[1],1)}"
+            Detect_Y = f"{round(row[2],1)}"
             Angle = f'{row[5]}°'
             State = row[6]
-            self.tree.insert("", "end", values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State))
+            if State == 'NG':
+                self.tree.insert("", "end", values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State), tags=('ng_row',))
+            else:
+                self.tree.insert("", "end", values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State))
+        self.tree.tag_configure('ng_row', foreground="red")
 
 class setupTools():
 
@@ -213,15 +217,13 @@ class setupTools():
 
     @staticmethod
     def tracking_id(a,obj_x,obj_y):
-        tolerance = 50
-        for id, (x, y) in a.items():
-            if (x - tolerance <= obj_x <= x + tolerance) and (y - tolerance <= obj_y <= y + tolerance):
+        for id,(x,y) in a.items():
+            if (x -TRACK_ID<=obj_x<=x+TRACK_ID) and (y-TRACK_ID<=obj_y<=y+TRACK_ID):
                 return id,obj_x,obj_y,x,y
             
     @staticmethod     
     def check_x_y(id,obj_x,obj_y,x,y):
-        tolerance = 5
-        if obj_x < x-tolerance or obj_x > x+tolerance and obj_y < y-tolerance or obj_y>y+tolerance:
+        if obj_x<x-CAL_COOR or obj_x>x+CAL_COOR or obj_y<y-CAL_COOR or obj_y>y+CAL_COOR:
             return id,obj_x,obj_y,x,y,'NG',False
         else :
             return id,obj_x,obj_y,x,y,'OK',True

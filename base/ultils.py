@@ -517,7 +517,7 @@ class Base:
                 if txt_file == 'classes.txt':
                     continue
                 input_path = os.path.join(input_folder, txt_file)
-                im = cv2.imread(input_path[:-4]+'.jpg')
+                im = cv2.imread(f'{input_path[:-3]}jpg')
                 im_height, im_width, _ = im.shape
                 output_path = os.path.join(output_folder, txt_file)
                 with open(input_path, 'r') as file:
@@ -529,7 +529,7 @@ class Base:
                             continue
                         params = list(map(float, line.split()))
                         class_id,x_center,y_center,width,height,angle = params
-                        # angle = torch.abs(angle) if torch.sign(angle) == -1 else self.right_angle-angle
+                        _angle = torch.abs(angle) if torch.sign(angle) == -1 else self.right_angle-angle
                         converted_label = self.xywhr2xyxyxyxy(class_id,x_center,y_center,width,height,angle,im_height,im_width)
                         out_file.write(" ".join(map(str, converted_label)) + '\n')
                 progress_retail = (index + 1) / total_fl * 100

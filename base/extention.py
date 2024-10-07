@@ -38,3 +38,5 @@ ITEM = 'truc_plate'
 FRAME_RATE = 0
 EXPOSURE = 0
 GAIN = 0
+TRACK_ID = 50
+CAL_COOR =  5
