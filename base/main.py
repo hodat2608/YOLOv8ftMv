@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-current_dir = Path(__file__).resolve().parent.parent
-ultralytics_main_dir = current_dir
-sys.path.append(str(ultralytics_main_dir))
 import root_path
 import tkinter as tk
 from base.train import *
@@ -28,15 +23,26 @@ def main():
     notebook.pack(fill="both", expand=True)
 
     menubar = Menu(window)
+
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Open Camera Display", command=lambda: display_layout(notebook, window))
-    open_label_img_menu(filemenu)
-    filemenu.add_command(label="Train Datasets", command=lambda: training_data(notebook, window))
-    filemenu.add_command(label="Real-Time Integration", command=donothing)
-    filemenu.add_command(label="Extract Output", command=lambda: video(notebook, window))
     filemenu.add_separator()
     filemenu.add_command(label="Exit", command=lambda:confirm_exit(window))
-    menubar.add_cascade(label="Tools", menu=filemenu)
+    menubar.add_cascade(label="Open", menu=filemenu)
+
+    View = Menu(menubar, tearoff=0)
+    View.add_command(label="Real-Time Integration", command=donothing)
+    View.add_command(label="Extract Output", command=lambda: video(notebook, window))
+    menubar.add_cascade(label="View", menu=View)
+
+    Configuration = Menu(menubar, tearoff=0)
+    IO_connection(Configuration)
+    menubar.add_cascade(label="I/O Configuration", menu=Configuration)
+
+    train = Menu(menubar, tearoff=0)
+    open_label_img_menu(train)
+    train.add_command(label="Train Dataset", command=lambda: training_data(notebook, window))
+    menubar.add_cascade(label="Tool", menu=train)
 
     helpmenu = Menu(menubar, tearoff=0)
     helpmenu.add_command(label="About...", command=donothing)

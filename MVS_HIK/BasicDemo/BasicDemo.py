@@ -149,7 +149,7 @@ if __name__ == "__main__":
             QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
             isOpen = False
         else:
-            set_continue_mode()
+            # set_continue_mode()
 
             get_param()
 

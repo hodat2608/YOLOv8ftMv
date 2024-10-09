@@ -1,8 +1,5 @@
-# import sys
+import sys
 from pathlib import Path
-# current_dir = Path(__file__).resolve().parent.parent
-# ultralytics_main_dir = current_dir
-# sys.path.append(str(ultralytics_main_dir))
 import root_path
 from ultralytics import YOLO
 from tkinter import filedialog
@@ -189,6 +186,7 @@ class Base:
         self.current_image_index = 0
         self.state = 0
         self.right_angle = 180
+        self._right_angle = 90
         self.password = " "
         self.lockable_widgets = [] 
         self.lock_params = []
@@ -545,6 +543,10 @@ class Base:
                 for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
                     setting = settings_dict[results.names[int(cls)]]
                     xywhr_list[index][-1] = math.degrees(xywhr_list[index][-1])
+                    if xywhr_list[index][-1] > self._right_angle:
+                        xywhr_list[index][-1] = self.right_angle - xywhr_list[index][-1]
+                    else:
+                        xywhr_list[index][-1] = -(xywhr_list[index][-1])
                     line = [int(cls_list[index])] + xywhr_list[index]  
                     formatted_line = " ".join(["{:.6f}".format(x) if isinstance(x, float) else str(x) for x in line])
                     if setting:

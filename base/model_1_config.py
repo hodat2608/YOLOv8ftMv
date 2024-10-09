@@ -1,8 +1,7 @@
 import sys
 from pathlib import Path
 current_dir = Path(__file__).resolve().parent.parent
-ultralytics_main_dir = current_dir
-sys.path.append(str(ultralytics_main_dir))
+sys.path.append(str(current_dir))
 import root_path
 from ultralytics import YOLO
 from base.ultils import *
@@ -24,7 +23,7 @@ import shutil
 import sys
 import os
 from functools import partial 
-from MvsExportImgBuffer.MvExportArrayBuff import *
+from IOConnection.hik_mvs.MvsExportImgBuffer.MvExportArrayBuff import *
 from base.constants import *
 from base.extention import *
 import queue
@@ -88,12 +87,12 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.processing_functions = {'HBB': self.run_func_hbb,'OBB': self.run_func_obb}
         self.configuration_frame()
         self.layout_camframe()
-        self.funcloop()
+        # self.funcloop()
         self.execute_in_threads()
         self.loop()
         self.table = CFG_Table(self.frame_table)
-        # self.request.enum_devices()
-        # self.request.open_device()
+        self.request.enum_devices()
+        self.request.open_device()
         self.is_connected,_ = self.check_connect_database()
 
     def read_plc_keyence(self, data):
@@ -559,8 +558,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         width_n = tk.Label(Frame_2, text='W_N', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         width_n.grid(row=0, column=5, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
-        wight_x= tk.Label(Frame_2, text='W_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
-        wight_x.grid(row=0, column=6, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
+        width_x= tk.Label(Frame_2, text='W_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
+        width_x.grid(row=0, column=6, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
         height_n = tk.Label(Frame_2, text='H_N', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         height_n.grid(row=0, column=7, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
@@ -568,7 +567,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         height_x = tk.Label(Frame_2, text='H_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         height_x.grid(row=0, column=8, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
-        plc_var = tk.Label(Frame_2, text='PLC', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
+        plc_var = tk.Label(Frame_2, text='VALUE', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         plc_var.grid(row=0, column=9, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
         conf = tk.Label(Frame_2, text='CONFIDENCE THRESHOLD', fg='red', font=('Ubuntu', 12), width=25, anchor='center', relief="groove", borderwidth=2)
@@ -708,8 +707,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         width_n = tk.Label(Frame_2, text='W_N', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         width_n.grid(row=0, column=5, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
-        wight_x= tk.Label(Frame_2, text='W_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
-        wight_x.grid(row=0, column=6, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
+        width_x= tk.Label(Frame_2, text='W_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
+        width_x.grid(row=0, column=6, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
         height_n = tk.Label(Frame_2, text='H_N', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         height_n.grid(row=0, column=7, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
@@ -717,7 +716,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         height_x = tk.Label(Frame_2, text='H_X', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         height_x.grid(row=0, column=8, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
-        plc_var = tk.Label(Frame_2, text='PLC', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
+        plc_var = tk.Label(Frame_2, text='VALUE', fg='red', font=('Ubuntu', 12), width=7, anchor='center', relief="groove", borderwidth=2)
         plc_var.grid(row=0, column=9, padx=15, pady=5, sticky="w", ipadx=2, ipady=2)
 
         conf = tk.Label(Frame_2, text='CONFI', fg='red', font=('Ubuntu', 12), width=15, anchor='center', relief="groove", borderwidth=2)
