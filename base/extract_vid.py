@@ -1,8 +1,7 @@
+import root_path
 from base.ultils import Base,MySQL_Connection,PLC_Connection,removefile,base_handle_video
 import sys
 import os
-current_dir = os.getcwd()
-sys.path.append(str(current_dir))
 from ultralytics import YOLO
 import tkinter as tk
 from tkinter import ttk

@@ -6,17 +6,16 @@ from tkinter import ttk
 from base.ultils import removefile
 from tkinter import *
 from tkinter import *
-import os,subprocess
-from tkinter import filedialog
-from tkinter import messagebox
 from base.labling import *
 from base.menu_cfg import *
 from base.model_1_config import *
+  
+__appname__ = "YOLOv8.2.0 by Utralytics"
 
 def main():
     global menubar
     window = tk.Tk()
-    window.title("YOLOv8.2.0 by Utralytics ft Tkinter")
+    window.title(__appname__)
     window.state('zoomed')
 
     notebook = ttk.Notebook(window)
@@ -54,3 +53,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sys.exit(main())

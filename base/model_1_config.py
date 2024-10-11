@@ -1,7 +1,5 @@
 import sys
 from pathlib import Path
-current_dir = Path(__file__).resolve().parent.parent
-sys.path.append(str(current_dir))
 import root_path
 from ultralytics import YOLO
 from base.ultils import *
@@ -17,15 +15,14 @@ import time
 from PIL import Image,ImageTk
 import time
 from tkinter import ttk
-import threading
 import tkinter as tk
-import shutil
 import sys
 import os
 from functools import partial 
 from IOConnection.hik_mvs.MvsExportImgBuffer.MvExportArrayBuff import *
 from base.constants import *
 from base.extention import *
+from base.config import *
 import queue
 import concurrent.futures
 
@@ -41,11 +38,11 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
         torch.cuda.set_device(0)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.database = MySQL_Connection("127.0.0.1","root1","987654321","connect_database_model") 
+        self.database = MySQL_Connection(HOST,ROOT,PASSWORD,DATABASE) 
         self.request = LoadDiviceEnvCam(0)
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-        self.name_table = 'model_connection_model1'
+        self.name_table = TABLE_1
         self.item_code_cfg = "EDFWOBB"
         self.image_files = []
         self.current_image_index = -1
@@ -87,12 +84,16 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.processing_functions = {'HBB': self.run_func_hbb,'OBB': self.run_func_obb}
         self.configuration_frame()
         self.layout_camframe()
-        # self.funcloop()
+        self.funcloop()
         self.execute_in_threads()
         self.loop()
         self.table = CFG_Table(self.frame_table)
-        self.request.enum_devices()
-        self.request.open_device()
+        try:
+            self.request.enum_devices()
+            self.request.open_device()
+        except: 
+            messagebox.showwarning('Warning','Fail to load camera device! check your connection I/O')
+            pass
         self.is_connected,_ = self.check_connect_database()
 
     def read_plc_keyence(self, data):

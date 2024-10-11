@@ -134,3 +134,8 @@ head:
   - [[15, 18, 21], 1, OBB, [nc, 1]] # OBB(P3, P4, P5)
 
 '''
+
+HOST = "127.0.0.1"
+ROOT = "root1"
+PASSWORD = "987654321"
+DATABASE = "connect_database_model"

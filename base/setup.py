@@ -1,8 +1,6 @@
 import sys,os
 from pathlib import Path
-current_dir = Path(__file__).resolve().parent.parent
-ultralytics_main_dir = current_dir
-sys.path.append(str(ultralytics_main_dir))
+import root_path
 from ultralytics import YOLO
 from base.constants import *
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"

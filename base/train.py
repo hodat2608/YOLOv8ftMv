@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
-current_dir = Path(__file__).resolve().parent.parent
-ultralytics_main_dir = current_dir
-sys.path.append(str(ultralytics_main_dir))
+import root_path
 import tkinter as tk
 from tkinter import ttk
 import glob
@@ -569,7 +567,7 @@ class Training_Data(Base):
                 f'--name {str(self.name_results_entry.get())} '
                 f'--workers {str(self.workers.get())} '
                 f'--patience {str(self.patience_model.get())} '
-                f'--cache {str(cache_option(self.cache.get()))} '  
+                f'--cache {str(setupTools.cache_option(self.cache.get()))} '  
                 f'--optimizer {str(self.optimizer_model.get())} '
                 )
 
@@ -614,14 +612,16 @@ class Training_Data(Base):
                             messagebox.showwarning("Warning", 'Invalid Supported Dataset Formats')
                             return
                         else:
-                            self.run_h(progress_label)
+                            processing_thread = threading.Thread(target=self.run_h, args=(progress_label,))
+                            processing_thread.start()
                             return                      
                     elif dataset_format == 'OBB Format':
                         if "YOLO_OBB" not in line:
                             messagebox.showwarning("Warning", 'Invalid Supported Dataset Formats')
                             return
                         else:
-                            self.run_o(progress_label)
+                            processing_thread = threading.Thread(target=self.run_o, args=(progress_label,))
+                            processing_thread.start()
                             return
 
 

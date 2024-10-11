@@ -426,12 +426,13 @@ class Base:
                             or int(conf*100) < setting['cmpnt_conf']:
                         list_remove.append(int(index))
                     if CHECK_ANGLE:
-                        if float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min'] or float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']:
-                            results_detect,ok_variable = 'NG',True
-                            list_label_ng.append(setting['label_name']) 
-                            list_remove.append(int(index))  
+                        if setting['label_name'] in ITEM:
+                            if float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min'] or float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']:
+                                results_detect,ok_variable = 'NG',True
+                                list_label_ng.append(setting['label_name']) 
+                                list_remove.append(int(index))  
                     if CHECK_OBJECTS_COORDINATES:
-                        if setting['label_name'] == ITEM:
+                        if setting['label_name'] == ITEM[0]:
                             if xywhr[0] and xywhr[1] :
                                 id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
                                 id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
@@ -527,7 +528,7 @@ class Base:
                             continue
                         params = list(map(float, line.split()))
                         class_id,x_center,y_center,width,height,angle = params
-                        _angle = torch.abs(angle) if torch.sign(angle) == -1 else self.right_angle-angle
+                        # _angle = torch.abs(angle) if torch.sign(angle) == -1 else self.right_angle-angle
                         converted_label = self.xywhr2xyxyxyxy(class_id,x_center,y_center,width,height,angle,im_height,im_width)
                         out_file.write(" ".join(map(str, converted_label)) + '\n')
                 progress_retail = (index + 1) / total_fl * 100
