@@ -88,13 +88,16 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.execute_in_threads()
         self.loop()
         self.table = CFG_Table(self.frame_table)
+        self.initialize_device()
+        self.is_connected,_ = self.check_connect_database()
+
+    def initialize_device(self):
         try:
             self.request.enum_devices()
             self.request.open_device()
         except: 
-            messagebox.showwarning('Warning','Fail to load camera device! check your connection I/O')
+            messagebox.showwarning('Warning','Unable to load camera device! Please check the device I/O connection')
             pass
-        self.is_connected,_ = self.check_connect_database()
 
     def read_plc_keyence(self, data):
         return super().read_plc_keyence(data)
@@ -240,11 +243,11 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         canvas.create_image(0, 0, anchor=tk.NW, image=photo)
         canvas.image = photo
         t2 = time.time()-t1
-        time_processing = str(int(t2*1000)) + 'ms'
+        time_processing = f'{str(int(t2*1000))}ms'
         self.time_processing_output.config(text=f'{time_processing}')
         canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
         canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
-        canvas.create_text(10, 70, anchor=tk.NW, text=f'Label: {list_label_ng}', fill='red', font=('Segoe UI', 20))
+        canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
         self.table.check_for_updates(valid)
         self.img_buffer = []
         self.request.stop_grabbing()
@@ -270,12 +273,12 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             canvas.create_image(0, 0, anchor=tk.NW, image=photo)
             canvas.image = photo
             t2 = time.time() - t1
-            time_processing = str(int(t2*1000)) + 'ms'
+            time_processing = f'{str(int(t2*1000))}ms'
             self.time_processing_output.config(text=f'{time_processing}')
             if self.cls:
                 canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
                 canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
-                canvas.create_text(10, 70, anchor=tk.NW, text=f'Label: {list_label_ng}', fill='red', font=('Segoe UI', 20))
+                canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
             self.table.check_for_updates(valid)
             os.remove(filename)
 

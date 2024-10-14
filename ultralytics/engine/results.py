@@ -208,6 +208,7 @@ class Results(SimpleClass):
         filename=None,
         extract = False,
         coordinates=False,
+        list_remove_pred=[],
         list_remove=[],
         dictionary={},
         *args, **kwargs
@@ -296,7 +297,7 @@ class Results(SimpleClass):
         #         box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
         #         annotator.box_label(box, label, color=colors(c, True), rotated=is_obb)
 
-        # # Plot Detect results
+        # Plot Detect results
         # if pred_boxes is not None and show_boxes:     
         #     valid_pred_boxes = []
         #     for index, d in enumerate(reversed(pred_boxes)):
@@ -383,8 +384,8 @@ class Results(SimpleClass):
         self.plot(save=True, filename=filename, *args, **kwargs)
         return filename
     
-    def extract_npy(self, list_remove=[], *args, **kwargs):
-        self.plot(extract=True,list_remove=list_remove, *args, **kwargs)
+    def extract_npy(self,list_remove=[],list_remove_pred=[],*args, **kwargs):
+        self.plot(extract=True,list_remove=list_remove,list_remove_pred=list_remove_pred,*args, **kwargs)
         return self.img_np
     
     def render_x_y(self, dictionary={}, *args, **kwargs):

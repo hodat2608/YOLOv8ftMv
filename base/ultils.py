@@ -416,7 +416,7 @@ class Base:
         xywhr_list = obb_dict.xywhr.tolist()
         cls_list = obb_dict.cls.tolist()
         conf_list = obb_dict.conf.tolist()
-        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect,valid = [],[],[],False,'ERROR',[]
+        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect,valid,list_remove_pred,is_angle = [],[],[],False,'ERROR',[],[],False
         for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
@@ -441,20 +441,23 @@ class Base:
                                     results_detect,ok_variable = 'NG',True 
                     allowed_classes.append(results[0].names[int(cls)])
                 else:
-                    list_remove.append(int(index))          
-        for model_name,setting in settings_dict.items():
-            if setting['join_detect'] and setting['OK_jont']: 
-                if allowed_classes.count(setting['label_name']) != setting['num_labels']:
-                    results_detect,ok_variable = 'NG',True
-                    list_label_ng.append(model_name)
-            if setting['join_detect'] and setting['NG_jont']:
-                if model_name in allowed_classes:
-                    results_detect,ok_variable = 'NG',True
-                    list_label_ng.append(setting['label_name'])
+                    list_remove.append(int(index))  
+        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):  
+                setting = settings_dict[results[0].names[int(cls)]]
+                if setting:
+                    if setting['join_detect'] and setting['OK_jont']: 
+                        if allowed_classes.count(setting['label_name']) != setting['num_labels']:
+                            results_detect,ok_variable = 'NG',True
+                            list_label_ng.append(setting['label_name'])
+                    if setting['join_detect'] and setting['NG_jont']:
+                        if setting['label_name'] or results[0].names[int(cls)] in allowed_classes:
+                            results_detect,ok_variable = 'NG',True
+                            list_label_ng.append(setting['label_name'])
+                            list_remove.append(int(index))  
         results_detect = 'OK' if not ok_variable else 'NG'
         if self.make_cls_var.get():       
             self.xyxyxyxy2xywhr_indirect(input_image,results[0],xywhr_list,cls_list,conf_list,model_settings)
-        show_img = np.squeeze(results[0].extract_npy(list_remove=list_remove))
+        show_img = np.squeeze(results[0].extract_npy(list_remove=list_remove,list_remove_pred=list_remove_pred))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
         valid = sorted(valid, key=lambda item: item[0])
@@ -736,9 +739,9 @@ class Base:
         t1 = time.time()
         for widget in camera_frame.winfo_children():
             widget.destroy()
-        image_result,results_detect,label_ng = self.process_image_func(img1_orgin, width, height)
+        image_result,results_detect,label_ng,_ = self.process_image_func(img1_orgin, width, height)
         t2 = time.time() - t1
-        time_processing = str(int(t2*1000)) + 'ms'
+        time_processing = f'{str(int(t2*1000))}ms'
         img_pil = Image.fromarray(image_result)
         photo = ImageTk.PhotoImage(img_pil)
         canvas = tk.Canvas(camera_frame, width=width, height=height)
@@ -748,10 +751,10 @@ class Base:
         canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
         canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
         if not label_ng:
-            canvas.create_text(10, 70, anchor=tk.NW, text=f'No Label', fill='green', font=('Segoe UI', 20))
+            canvas.create_text(10, 70, anchor=tk.NW, text=f' ', fill='green', font=('Segoe UI', 20))
         else:
             label_ng = ','.join(label_ng)
-            canvas.create_text(10, 70, anchor=tk.NW, text=f'Label: {label_ng}', fill='red', font=('Segoe UI', 20))
+            canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {label_ng}', fill='red', font=('Segoe UI', 20))
         return results_detect  
     
     def detect_single_img(self, camera_frame):
