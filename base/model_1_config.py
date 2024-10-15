@@ -39,7 +39,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         torch.cuda.set_device(0)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.database = MySQL_Connection(HOST,ROOT,PASSWORD,DATABASE) 
-        self.request = LoadDiviceEnvCam(0)
+        self.request = Initialize_Device_Env(0)
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         self.name_table = TABLE_1
@@ -88,16 +88,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.execute_in_threads()
         self.loop()
         self.table = CFG_Table(self.frame_table)
-        self.initialize_device()
         self.is_connected,_ = self.check_connect_database()
-
-    def initialize_device(self):
-        try:
-            self.request.enum_devices()
-            self.request.open_device()
-        except: 
-            messagebox.showwarning('Warning','Unable to load camera device! Please check the device I/O connection')
-            pass
 
     def read_plc_keyence(self, data):
         return super().read_plc_keyence(data)
@@ -248,7 +239,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
         canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
         canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
-        self.table.check_for_updates(valid)
+        self.table(valid)
         self.img_buffer = []
         self.request.stop_grabbing()
 
@@ -279,7 +270,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
                 canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
                 canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
                 canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
-            self.table.check_for_updates(valid)
+            self.table(valid)
             os.remove(filename)
 
     def layout_camframe(self):

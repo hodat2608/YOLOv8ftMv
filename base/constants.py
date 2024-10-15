@@ -34,7 +34,7 @@ class CFG_Table(tk.Tk):
         self.tree.column("Status", width=80, anchor="center")
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def check_for_updates(self, data):
+    def __call__(self,data):
         if data:
             for row in self.tree.get_children():
                 self.tree.delete(row)

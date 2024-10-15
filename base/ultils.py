@@ -421,14 +421,16 @@ class Base:
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
                 if setting['join_detect']:
-                    if xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max'] \
-                            or xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max'] \
-                            or int(conf*100) < setting['cmpnt_conf']:
+                    if (xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max']) \
+                            or (xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max']) \
+                            or (int(conf*100) < setting['cmpnt_conf']):
                         list_remove.append(int(index))
                     if CHECK_ANGLE:
                         if setting['label_name'] in ITEM:
-                            if float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min'] or float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']:
+                            if (float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min']) or \
+                                (float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']):
                                 results_detect,ok_variable = 'NG',True
+                                is_angle = True
                                 list_label_ng.append(setting['label_name']) 
                                 list_remove.append(int(index))  
                     if CHECK_OBJECTS_COORDINATES:
@@ -436,7 +438,7 @@ class Base:
                             if xywhr[0] and xywhr[1] :
                                 id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
                                 id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
-                                valid.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn))
+                                valid.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn,is_angle))
                                 if not val:
                                     results_detect,ok_variable = 'NG',True 
                     allowed_classes.append(results[0].names[int(cls)])

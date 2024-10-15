@@ -6,7 +6,7 @@ from base.IOConnection.hik_mvs.MvsExportImgBuffer.MvCameraControl_class import *
 from base.IOConnection.hik_mvs.MvsExportImgBuffer.MvErrorDefine_const import *
 from base.IOConnection.hik_mvs.MvsExportImgBuffer.CameraParams_header import *
 from base.IOConnection.hik_mvs.MvsExportImgBuffer.PyUICBasicDemo import Ui_MainWindow
-
+from tkinter import messagebox
 
 # 获取选取设备信息的索引，通过[]之间的字符去解析
 def TxtWrapBy(start_str, end, all):
@@ -32,7 +32,7 @@ def ToHexStr(num):
     return hexStr
 
 
-class LoadDiviceEnvCam():
+class Initialize_Device_Env():
     def __init__(self,n_numcamera):
         self.deviceList = MV_CC_DEVICE_INFO_LIST()
         self.cam = MvCamera()
@@ -41,6 +41,15 @@ class LoadDiviceEnvCam():
         self.isOpen = False
         self.isGrabbing= False
         self.isCalibMode = False # 是否是标定模式（获取原始图像）
+        self.initialize_device()
+
+    def initialize_device(self):
+        try:
+            self.enum_devices()
+            self.open_device()
+        except: 
+            messagebox.showwarning('Warning','Unable to load camera device! Please check the device I/O connection')
+            pass
    
     # 绑定下拉列表至设备信息索引
     def xFunc(event):
