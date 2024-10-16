@@ -98,7 +98,7 @@ class Ui_MainWindow(object):
 
         self.groupParam = QtWidgets.QGroupBox(self.centralWidget)
         self.groupParam.setEnabled(False)
-        self.groupParam.setGeometry(QtCore.QRect(530, 310, 211, 300))
+        self.groupParam.setGeometry(QtCore.QRect(530, 310, 211, 250))
         self.groupParam.setObjectName("groupParam")
 
         self.gridLayoutWidget_3 = QtWidgets.QWidget(self.groupParam)

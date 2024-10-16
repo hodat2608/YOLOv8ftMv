@@ -85,10 +85,13 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.configuration_frame()
         self.layout_camframe()
         self.funcloop()
-        self.execute_in_threads()
-        self.loop()
+        # self.dual_submit()
         self.table = CFG_Table(self.frame_table)
         self.is_connected,_ = self.check_connect_database()
+
+    def closed_device(self): 
+        self.request.stop_grabbing()
+        self.request.close_device()
 
     def read_plc_keyence(self, data):
         return super().read_plc_keyence(data)
@@ -173,7 +176,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         return super().load_first_img()
     
     def read_plc_value_from_file(self):
-        with open(r"C:\Users\CCSX009\Desktop\plc.txt", 'r') as file:
+        with open(r"var_plc.txt", 'r') as file:
             content = file.read()
             parts = content.split('=')
             if len(parts) == 2:
@@ -183,11 +186,11 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
                 raise ValueError("File format is incorrect. Expected 'read_plc = <value>' format.")
             
     def write_plc_value_to_file(self):
-        with open(r"C:\Users\CCSX009\Desktop\plc.txt", 'w') as file:
+        with open(r"var_plc.txt", 'w') as file:
             file.write(f"read_plc = 0\n")
         
     def write_plc_value_to_file_btn(self):
-        with open(r"C:\Users\CCSX009\Desktop\plc.txt", 'w') as file:
+        with open(r"var_plc.txt", 'w') as file:
             file.write(f"read_plc = 1\n")
 
     def on_option_change(self,event,Frame_2):
@@ -207,16 +210,23 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             self.write_plc_value_to_file()
         self.img_frame.after(TIME_LOOP, self.funcloop)
 
-    def loop(self): 
-        self.executor.submit(self.extract)
-        self.img_frame.after(TIME_LOOP, self.loop)
-
-    def execute_in_threads(self):
+    def manual_excute(self):
         value_plc = self.read_plc_value_from_file()
         if value_plc==1:
             self.executor.submit(self.export_image)
             self.write_plc_value_to_file()
-        self.img_frame.after(TIME_LOOP, self.execute_in_threads)
+
+    def dual_submit(self):
+        self.executor.submit(self.manual_excute)
+        self.executor.submit(self.extract)
+        self.img_frame.after(TIME_LOOP, self.dual_submit)
+
+    def auto_excute(self):
+        value_plc = self.read_plc_keyence(self.trigger)
+        if value_plc==1:
+            self.executor.submit(self.export_image)
+            self.write_plc_keyence(self.trigger,1)
+        self.img_frame.after(TIME_LOOP, self.auto_excute)
 
     def extract(self):
         width = 800

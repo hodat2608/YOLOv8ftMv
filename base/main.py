@@ -13,6 +13,8 @@ from base.model_1_config import *
 __appname__ = "YOLOv8.2.0 by Utralytics"
 
 def main():
+
+    disable_ctrl_c() 
     global menubar
     window = tk.Tk()
     window.title(__appname__)
@@ -49,6 +51,8 @@ def main():
 
     window.config(menu=menubar)
     create_context_menu(notebook)
+
+    window.protocol("WM_DELETE_WINDOW", lambda: confirm_exit(window))
     window.mainloop()
 
 if __name__ == "__main__":

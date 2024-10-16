@@ -9,7 +9,8 @@ from tkinter import messagebox
 from base.labling import *
 from PyQt5.QtWidgets import *
 from IOConnection.hik_mvs.listDevice import *
-
+import signal
+from base.model_2_config import *
 def IO_connection(parent_menu):
     connection_menu = Menu(parent_menu, tearoff=0)
     connection_menu.add_command(label="HIK", command=main_mvs)
@@ -81,6 +82,8 @@ def close_tab(notebook):
         print(f"Closing tab: {notebook.tab(tab, 'text')}")
 
 def display_layout(notebook, window):
+    global signal_device
+    signal_device = None
     progress_var = tk.DoubleVar()
     progress_bar = ttk.Progressbar(window, orient="horizontal", length=200, mode="determinate", variable=progress_var)
     progress_label = tk.Label(window, text="0%")
@@ -107,11 +110,11 @@ def display_layout(notebook, window):
 
     step += 1
     update_progress(step, total_steps)
-    Model_Camera_1(notebook)
+    signal_device = Model_Camera_1(notebook)
 
-    # step += 1
-    # update_progress(step, total_steps)
-    # Model_Camera_2(notebook)
+    step += 1
+    update_progress(step, total_steps)
+    Model_Camera_2(notebook)
 
     update_progress(total_steps, total_steps)
     progress_var.set(100)
@@ -134,8 +137,14 @@ def training_data(notebook, window):
     Training_Data(settings_notebook,window)
 
 def confirm_exit(window):
-    confirm_exit = messagebox.askokcancel("Confirm", "Are you sure to exit ?")
-    if confirm_exit: 
-        window.quit() 
-    else: 
-        pass
+    """Hiển thị thông báo xác nhận thoát chương trình."""
+    if messagebox.askokcancel("Quit", "Do you really want to quit?"):
+        try: 
+            signal_device.closed_device()
+            window.destroy()
+        except:
+            window.destroy()
+
+def disable_ctrl_c():
+    """Vô hiệu hóa phím Ctrl+C trong terminal."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -208,7 +208,7 @@ class CFGIOConnector():
             self.ui.edtGain.setText("{0:.2f}".format(self.obj_cam_operation.gain))
             self.ui.edtFrameRate.setText("{0:.2f}".format(self.obj_cam_operation.frame_rate))
 
-    def set_param(self,frame_rate,exposure,gain):
+    def set_param(self):
         frame_rate = self.ui.edtFrameRate.text()
         exposure = self.ui.edtExposureTime.text()
         gain = self.ui.edtGain.text()

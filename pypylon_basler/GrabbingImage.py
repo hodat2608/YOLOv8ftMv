@@ -1,52 +1,45 @@
+'''
+A simple Program for grabing video from basler camera and converting it to opencv img.
+Tested on Basler acA1920-25uc (USB3, Window x64 , python 3.12)
+
+'''
 from pypylon import pylon
 import cv2
+import time
+import numpy as np
 camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
 camera.Open()
+camera.Width.Value = 1722
+camera.Height.Value = 960
+camera.OffsetX.Value = 0
+camera.OffsetY.Value = 0
+camera.ExposureTime.SetValue(10000)
+camera.Gain.SetValue(20)
+camera.AcquisitionFrameRate.SetValue(20)
 
-# demonstrate some feature access
-new_width = camera.Width.Value - camera.Width.Inc
-if new_width >= camera.Width.Min:
-    camera.Width.Value = new_width
+camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+converter = pylon.ImageFormatConverter()
 
-numberOfImagesToGrab = 100
-camera.StartGrabbingMax(numberOfImagesToGrab)
+converter.OutputPixelFormat = pylon.PixelType_RGB16packed
+converter.OutputBitAlignment = pylon.OutputBitAlignment_LsbAligned
 
-camera.IsGrabbing()
-grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+while camera.IsGrabbing():
+    startTime = time.time()
+    grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
 
-if grabResult.GrabSucceeded():
-    # Access the image data.
-    print("SizeX: ", grabResult.Width)
-    print("SizeY: ", grabResult.Height)
-    img = grabResult.Array
-    print("Gray value of first pixel: ", img[0, 0])
-    cv2.imshow('ccc',img)
-    cv2.imwrite(r'C:\Users\CCSX009\Documents\yolov5\test_image\camera1\a.jpg',img)
-# grabResult.Release()
-# camera.Close()
+    if grabResult.GrabSucceeded():
+        image = grabResult.GetArray()
+        cv2.namedWindow('Video', cv2.WINDOW_AUTOSIZE)
+        cv2.imshow('Video', image)
+        k = cv2.waitKey(1)
+        if k == 27:
+            break
+    grabResult.Release()
 
-from pypylon import pylon
+    runningTime = (time.time() - startTime)
+    fps = 1.0/runningTime
+    print ("%f  FPS" % fps)
 
-# Initialize camera
-camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-
-# Set Gain Auto parameters
-minLowerLimit = camera.AutoGainRawLowerLimit.Min
-maxUpperLimit = camera.AutoGainRawUpperLimit.Max
-camera.AutoGainRawLowerLimit.Value = minLowerLimit
-camera.AutoGainRawUpperLimit.Value = maxUpperLimit
-camera.AutoTargetValue.Value = 150
-
-# Set Exposure Auto parameters
-minLowerLimit = camera.AutoExposureTimeAbsLowerLimit.Min
-maxUpperLimit = camera.AutoExposureTimeAbsUpperLimit.Max
-camera.AutoExposureTimeAbsLowerLimit.Value = minLowerLimit
-camera.AutoExposureTimeAbsUpperLimit.Value = maxUpperLimit
-camera.AutoTargetBrightness.Value = 0.6
-
-# Enable Gain and Exposure Auto
-camera.GainAuto.Value = "Continuous"
-camera.ExposureAuto.Value = "Continuous"
-
-# Start grabbing
-camera.StartGrabbing()
+# Releasing the resource    
+camera.StopGrabbing()
+cv2.destroyAllWindows()

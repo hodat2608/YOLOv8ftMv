@@ -490,9 +490,6 @@ class CameraOperation:
                     del img_buff
                 break
 
-    def all(self):
-        return self.img_buffer
-
     def Color_numpy(self,data,nWidth,nHeight):
         data_ = np.frombuffer(data, count=int(nWidth*nHeight*3), dtype=np.uint8, offset=0)
         data_r = data_[0:nWidth*nHeight*3:3]
