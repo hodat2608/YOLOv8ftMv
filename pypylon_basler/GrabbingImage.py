@@ -7,15 +7,27 @@ from pypylon import pylon
 import cv2
 import time
 import numpy as np
-camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+devices = pylon.TlFactory.GetInstance().EnumerateDevices()
+for d in devices:
+    print(d.GetModelName(), d.GetSerialNumber(), d)
+print(devices[0])
+camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice(devices[0]))
 camera.Open()
-camera.Width.Value = 1722
-camera.Height.Value = 960
-camera.OffsetX.Value = 0
-camera.OffsetY.Value = 0
-camera.ExposureTime.SetValue(10000)
-camera.Gain.SetValue(20)
-camera.AcquisitionFrameRate.SetValue(20)
+camera.DeviceModelName.Value
+camera.UserSetSelector.SetValue('UserSet1')
+camera.UserSetLoad.Execute()
+
+camera.Width.SetValue(1722)
+camera.Height.SetValue(960)
+
+camera.OffsetX.SetValue(0)
+camera.OffsetY.SetValue(0)
+
+camera.ExposureTime.SetValue(camera.ExposureTime.GetValue())
+
+camera.Gain.SetValue(camera.Gain.GetValue())
+
+camera.AcquisitionFrameRate.SetValue(camera.AcquisitionFrameRate.GetValue())
 
 camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 converter = pylon.ImageFormatConverter()
@@ -23,23 +35,25 @@ converter = pylon.ImageFormatConverter()
 converter.OutputPixelFormat = pylon.PixelType_RGB16packed
 converter.OutputBitAlignment = pylon.OutputBitAlignment_LsbAligned
 
-while camera.IsGrabbing():
-    startTime = time.time()
-    grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+# while camera.IsGrabbing():
+startTime = time.time()
+grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
 
-    if grabResult.GrabSucceeded():
-        image = grabResult.GetArray()
-        cv2.namedWindow('Video', cv2.WINDOW_AUTOSIZE)
-        cv2.imshow('Video', image)
-        k = cv2.waitKey(1)
-        if k == 27:
-            break
-    grabResult.Release()
+if grabResult.GrabSucceeded():
+    image = grabResult.GetArray()
+    cv2.namedWindow('Video', cv2.WINDOW_AUTOSIZE)
+    cv2.imshow('Video', image)
+    cv2.imwrite('Videssso.jpg', image)
+    k = cv2.waitKey(1)
+    # if k == 27:
+    #     break
+grabResult.Release()
 
-    runningTime = (time.time() - startTime)
-    fps = 1.0/runningTime
-    print ("%f  FPS" % fps)
+runningTime = (time.time() - startTime)
+fps = 1.0/runningTime
+print ("%f  FPS" % fps)
 
 # Releasing the resource    
 camera.StopGrabbing()
+camera.DestroyDevice()
 cv2.destroyAllWindows()
