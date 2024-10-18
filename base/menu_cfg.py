@@ -8,13 +8,15 @@ from tkinter import *
 from tkinter import messagebox
 from base.labling import *
 from PyQt5.QtWidgets import *
-from IOConnection.hik_mvs.listDevice import *
+from base.IOConnection.hik_mvs.mainUIC import *
+from IOConnection.basler_pylon.mainUIC import *
 import signal
 from base.model_2_config import *
+
 def IO_connection(parent_menu):
     connection_menu = Menu(parent_menu, tearoff=0)
-    connection_menu.add_command(label="HIK", command=main_mvs)
-    connection_menu.add_command(label="Basler", command=donothing)
+    connection_menu.add_command(label="HIK - MVS", command=Hik_MVS)
+    connection_menu.add_command(label="Basle - Pylon Viewer", command=BaslerPylon)
     connection_menu.add_command(label="Omron Sentech", command=donothing)
     parent_menu.add_cascade(label="I/O Connection", menu=connection_menu)
 

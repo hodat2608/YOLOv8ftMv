@@ -25,8 +25,10 @@ class Ui_MainWindow(object):
         self.ComboDevices.setObjectName("ComboDevices")
 
         self.widgetDisplay = QtWidgets.QWidget(self.centralWidget)
-        self.widgetDisplay.setGeometry(QtCore.QRect(10, 60, 511, 401))
+        self.widgetDisplay.setGeometry(QtCore.QRect(10, 60, 511, 500))
         self.widgetDisplay.setObjectName("widgetDisplay")
+
+        self.widgetDisplay.setStyleSheet("border: 2px solid gray;")
 
         self.groupInit = QtWidgets.QGroupBox(self.centralWidget)
         self.groupInit.setGeometry(QtCore.QRect(530, 20, 211, 101))
@@ -172,7 +174,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Settings"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "MVS STD"))
         self.groupInit.setTitle(_translate("MainWindow", "Initialization"))
         self.bnClose.setText(_translate("MainWindow", "Close Device"))
         self.bnOpen.setText(_translate("MainWindow", "Open Device"))

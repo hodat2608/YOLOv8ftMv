@@ -176,7 +176,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         return super().load_first_img()
     
     def read_plc_value_from_file(self):
-        with open(r"var_plc.txt", 'r') as file:
+        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'r') as file:
             content = file.read()
             parts = content.split('=')
             if len(parts) == 2:
@@ -186,11 +186,11 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
                 raise ValueError("File format is incorrect. Expected 'read_plc = <value>' format.")
             
     def write_plc_value_to_file(self):
-        with open(r"var_plc.txt", 'w') as file:
+        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'w') as file:
             file.write(f"read_plc = 0\n")
         
     def write_plc_value_to_file_btn(self):
-        with open(r"var_plc.txt", 'w') as file:
+        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'w') as file:
             file.write(f"read_plc = 1\n")
 
     def on_option_change(self,event,Frame_2):
