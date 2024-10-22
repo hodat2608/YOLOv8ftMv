@@ -8,7 +8,6 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import glob
 import torch
-# import stapipy as st
 import cv2
 import os
 import time
@@ -20,6 +19,7 @@ import sys
 import os
 from functools import partial 
 from IOConnection.hik_mvs.MvsExportImgBuffer.MvExportArrayBuff import *
+from IOConnection.basler_pylon.PylonExportImgBuffer import *
 from base.constants import *
 from base.extention import *
 from base.config import *
@@ -36,10 +36,14 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.tab.pack(side=tk.LEFT, fill="both", expand=True)
         self.settings_notebook = ttk.Notebook(notebook)
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
-        torch.cuda.set_device(0)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.database = MySQL_Connection(HOST,ROOT,PASSWORD,DATABASE) 
-        self.request = Initialize_Device_Env(0)
+        self.n_camera_serial = 25039617
+        self.userset_device = 'UserSet1'
+        self.id_camera = 0
+        torch.cuda.set_device(self.id_camera)
+        self.device = torch.device(f"cuda:{self.id_camera}" if torch.cuda.is_available() else "cpu")
+        self.database = MySQL_Connection(HOST,ROOT,PASSWORD,DATABASE)
+        self.request_mvs = Initialize_Device_Env_MVS(self.id_camera)
+        self.request_pylon = Basler_Pylon_xFunc(self.n_camera_serial,self.userset_device)
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         self.name_table = TABLE_1
@@ -90,8 +94,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.is_connected,_ = self.check_connect_database()
 
     def closed_device(self): 
-        self.request.stop_grabbing()
-        self.request.close_device()
+        self.request_mvs.stop_grabbing()
+        self.request_mvs.close_device()
 
     def read_plc_keyence(self, data):
         return super().read_plc_keyence(data)
@@ -199,8 +203,12 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.datasets_format_model_confirm(Frame_2)
         super().process_func_local(selected_format)
         
-    def export_image(self):
-        self.request.start_grabbing(self.task)
+    def export_image_request_mvs(self):
+        self.request_mvs.start_grabbing(self.task)
+        self.img_buffer.append(self.task.get())
+
+    def export_image_request_pylon(self):
+        self.request_pylon.Start_grabbing(self.task)
         self.img_buffer.append(self.task.get())
 
     def funcloop(self):
@@ -210,21 +218,27 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             self.write_plc_value_to_file()
         self.img_frame.after(TIME_LOOP, self.funcloop)
 
-    def manual_excute(self):
+    def manual_excute_mvs(self):
         value_plc = self.read_plc_value_from_file()
         if value_plc==1:
-            self.executor.submit(self.export_image)
+            self.executor.submit(self.export_image_request_mvs)
+            self.write_plc_value_to_file()
+
+    def manual_excute_pylon(self):
+        value_plc = self.read_plc_value_from_file()
+        if value_plc==1:
+            self.executor.submit(self.export_image_request_pylon)
             self.write_plc_value_to_file()
 
     def dual_submit(self):
-        self.executor.submit(self.manual_excute)
+        self.executor.submit(self.manual_excute_pylon)
         self.executor.submit(self.extract)
         self.img_frame.after(TIME_LOOP, self.dual_submit)
 
     def auto_excute(self):
         value_plc = self.read_plc_keyence(self.trigger)
         if value_plc==1:
-            self.executor.submit(self.export_image)
+            self.executor.submit(self.export_image_request_mvs)
             self.write_plc_keyence(self.trigger,1)
         self.img_frame.after(TIME_LOOP, self.auto_excute)
 
@@ -251,7 +265,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
         self.table(valid)
         self.img_buffer = []
-        self.request.stop_grabbing()
+        self.request_mvs.stop_grabbing()
+        self.request_pylon.Stop_grabbing()
 
     def extract_fh(self):
         width = 800
@@ -429,7 +444,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         label_size_model = ttk.Label(Frame_1, text='Size Model', font=('Segoe UI', 12))
         label_size_model.grid(row=6, column=0, columnspan=2, padx=10, pady=5, sticky="nws")
 
-        options = [480, 640, 832]
+        options = [480, 640, 832, 1024]
         self.size_model = ttk.Combobox(Frame_1, values=options, width=7)
         self.size_model.grid(row=7, column=0, columnspan=2, padx=30, pady=5, sticky="nws", ipadx=5, ipady=2)
         self.lockable_widgets.append(self.size_model)

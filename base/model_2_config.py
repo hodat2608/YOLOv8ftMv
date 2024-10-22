@@ -8,7 +8,6 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import glob
 import torch
-# import stapipy as st
 import cv2
 import os
 import time

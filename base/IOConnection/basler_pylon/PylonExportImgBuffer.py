@@ -1,0 +1,145 @@
+import tkinter as tk
+from tkinter import Label, Entry, Button, Frame
+from pypylon import pylon
+import cv2
+import numpy as np
+import time
+from PyQt5.QtWidgets import *
+from PyQt5 import QtCore, QtWidgets, QtGui
+from tkinter import filedialog,messagebox
+import datetime
+from pypylon import genicam
+import threading
+
+class Basler_Pylon_xFunc:
+    def __init__(self,n_serial,n_UserSetSelector):
+        self.n_serial = str(n_serial) 
+        self.UserSetSelector = n_UserSetSelector
+        self.camera = None
+        self.isOpen = False
+        self.isGrabbing= []
+        self.converter = pylon.ImageFormatConverter()
+        self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        self.b_start_grabbing=False
+        self.b_exit = False
+        self.b_thread_closed = False
+        self.initialize_device()
+
+    def initialize_device(self): 
+        try: 
+            self.enum_devices()
+            self.open_device()
+            print("init successfully!")
+        except: 
+            messagebox.showwarning('Warning','Unable to load Basler device! Please check your connection')
+            pass
+
+    def enum_devices(self):
+        self.devices = pylon.TlFactory.GetInstance().EnumerateDevices()
+        
+    def open_device(self):
+        id_UserSetConfirm = 0
+        if not self.isOpen:
+            for index, device in enumerate(self.devices):
+                if device.GetSerialNumber() == self.n_serial: 
+                    id_UserSetConfirm = index
+                else : 
+                    messagebox.showwarning('Warning','Camera serial number error. Please try again!')
+                    return
+            self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice(self.devices[id_UserSetConfirm]))
+            self.camera.Open()
+            self.camera.UserSetSelector.SetValue(self.UserSetSelector)
+            self.camera.UserSetLoad.Execute()
+            self.isOpen = True
+            self.b_thread_closed = False
+
+    def TriggerOnce(self, task):
+        self.isGrabbing = []
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        grab_result = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
+        if grab_result.GrabSucceeded():
+            image_bufer = grab_result.GetArray()
+            image_rgb = cv2.cvtColor(image_bufer, cv2.COLOR_BGR2RGB)
+            task.put(image_rgb)
+        grab_result.Release()
+        if self.b_exit:
+            if image_bufer is not None:
+                del image_bufer
+
+    def Start_grabbing(self, task):
+        if not self.b_start_grabbing and self.isOpen:
+            self.b_exit = False
+            self.b_start_grabbing = True
+            print("start grabbing successfully!")
+            try:
+                self.h_thread_handle = threading.Thread(target=Basler_Pylon_xFunc.TriggerOnce, args=(self, task))
+                self.h_thread_handle.start()
+                self.b_thread_closed = True
+            finally:
+                pass
+
+    def Stop_grabbing(self):
+        if self.b_start_grabbing and self.isOpen:
+            if self.b_thread_closed:
+                self.camera.StopGrabbing()
+                self.camera.Close()    
+                self.b_thread_closed = False
+            print("stop grabbing successfully!")
+            self.b_start_grabbing = False
+            self.b_exit = True
+
+    def Close_device(self):
+        if self.isOpen:
+            if self.b_thread_closed:
+                self.camera.DestroyDevice()
+                self.b_thread_closed = False
+                self.b_exit = True
+    
+    def start_stream(self):
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        self.timer = QtCore.QTimer(self.ui.centralWidget)
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(30)
+
+    def update_frame(self):
+        try : 
+            if self.camera.IsGrabbing():
+                grab_result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+                if grab_result.GrabSucceeded():
+                    frame_bufer = self.converter.Convert(grab_result)
+                    img_buff = frame_bufer.GetArray()
+                    image_rgb = cv2.cvtColor(img_buff, cv2.COLOR_BGR2RGB)
+                    height, width, channel = image_rgb.shape
+                    bytes_per_line = 3 * width
+                    q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+                    pixmap = QtGui.QPixmap.fromImage(q_img)
+                    self.ui.labelDisplay.setPixmap(pixmap)
+                grab_result.Release()
+        except genicam.GenericException as e:
+            raise genicam.RuntimeException("Could not Streaming")
+
+    def stop_stream(self):
+        if self.camera.IsGrabbing():
+            self.camera.StopGrabbing()
+        if hasattr(self, 'timer'):
+            self.timer.stop()
+
+    def save_img(self):
+        current_time = str(datetime.datetime.now())
+        name_folder = current_time.replace(':', '-').replace(' ', '_').replace('.', '-')
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=f"{name_folder}.png",
+            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("All files", "*.*")],
+            title="Save image as")
+        if file_path:
+            cv2.imwrite(file_path, self.isGrabbing[0])
+            print(f"Image saved to: {file_path}")
+        else:
+            print("Save operation was canceled.")
+
+
+
+    
+
+

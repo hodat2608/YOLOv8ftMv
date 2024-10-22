@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtCore, QtWidgets, QtGui
 from tkinter import filedialog
 import datetime
+import base.root_path
+from ultralytics import YOLO
 from pypylon import genicam
 
 class Basler_Pylon:
@@ -20,6 +22,8 @@ class Basler_Pylon:
         self.converter = pylon.ImageFormatConverter()
         self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        self.weight = r"C:\Users\CCSX009\Pictures\elge\data\20241011\weights\best.pt"
+        self.model = YOLO(self.weight,task='detect')
 
     def initialize_camera(self):
         self.devices = pylon.TlFactory.GetInstance().EnumerateDevices()
@@ -201,6 +205,7 @@ class Basler_Pylon:
                     frame_bufer = self.converter.Convert(grab_result)
                     img_buff = frame_bufer.GetArray()
                     image_rgb = cv2.cvtColor(img_buff, cv2.COLOR_BGR2RGB)
+                    results = self.model(image_rgb)
                     height, width, channel = image_rgb.shape
                     bytes_per_line = 3 * width
                     q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)

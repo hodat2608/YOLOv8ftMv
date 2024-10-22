@@ -15,9 +15,9 @@ from base.model_2_config import *
 
 def IO_connection(parent_menu):
     connection_menu = Menu(parent_menu, tearoff=0)
-    connection_menu.add_command(label="HIK - MVS", command=Hik_MVS)
-    connection_menu.add_command(label="Basle - Pylon Viewer", command=BaslerPylon)
-    connection_menu.add_command(label="Omron Sentech", command=donothing)
+    connection_menu.add_command(label="HIK-MVS Viewer", command=Hik_MVS)
+    connection_menu.add_command(label="Basle-Pylon Viewer", command=BaslerPylon)
+    connection_menu.add_command(label="Omron-Sentech viewer", command=donothing)
     parent_menu.add_cascade(label="I/O Connection", menu=connection_menu)
 
 def open_label_img_menu(parent_menu):
@@ -114,9 +114,9 @@ def display_layout(notebook, window):
     update_progress(step, total_steps)
     signal_device = Model_Camera_1(notebook)
 
-    step += 1
-    update_progress(step, total_steps)
-    Model_Camera_2(notebook)
+    # step += 1
+    # update_progress(step, total_steps)
+    # Model_Camera_2(notebook)
 
     update_progress(total_steps, total_steps)
     progress_var.set(100)
@@ -150,3 +150,34 @@ def confirm_exit(window):
 def disable_ctrl_c():
     """Vô hiệu hóa phím Ctrl+C trong terminal."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+class Asserts():
+
+    @property
+    def icon_open_display_cam(self):
+        icon = Image.open(r"base\Asserts\settings.png")
+        icon_resized = icon.resize((20, 20))
+        icon_tk = ImageTk.PhotoImage(icon_resized)
+        return icon_tk
+
+    @property
+    def exit(self):
+        icon = Image.open(r"base\Asserts\logout.png")
+        icon_resized = icon.resize((20, 20))
+        icon_tk = ImageTk.PhotoImage(icon_resized)
+        return icon_tk
+    
+    @property
+    def IO(self):
+        icon = Image.open(r"base\Asserts\IO.png")
+        icon_resized = icon.resize((20, 20))
+        icon_tk = ImageTk.PhotoImage(icon_resized)
+        return icon_tk
+    
+    @property
+    def tools(self):
+        icon = Image.open(r"base\Asserts\IO.png")
+        icon_resized = icon.resize((20, 20))
+        icon_tk = ImageTk.PhotoImage(icon_resized)
+        return icon_tk

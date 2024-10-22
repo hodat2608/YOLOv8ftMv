@@ -32,7 +32,7 @@ def ToHexStr(num):
     return hexStr
 
 
-class Initialize_Device_Env():
+class Initialize_Device_Env_MVS():
     def __init__(self,n_numcamera):
         self.deviceList = MV_CC_DEVICE_INFO_LIST()
         self.cam = MvCamera()
@@ -48,7 +48,7 @@ class Initialize_Device_Env():
             self.enum_devices()
             self.open_device()
         except: 
-            messagebox.showwarning('Warning','Unable to load camera device! Please check the device I/O connection')
+            messagebox.showwarning('Warning','Unable to load camera HIK device! Please check the device I/O connection')
             pass
    
     # 绑定下拉列表至设备信息索引
