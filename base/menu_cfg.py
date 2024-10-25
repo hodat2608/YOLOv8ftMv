@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import *
 from base.IOConnection.hik_mvs.mainUIC import *
 from IOConnection.basler_pylon.mainUIC import *
 import signal
+import multiprocessing
 from base.model_2_config import *
 
 def IO_connection(parent_menu):

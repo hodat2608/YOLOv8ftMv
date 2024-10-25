@@ -533,7 +533,6 @@ class Base:
                             continue
                         params = list(map(float, line.split()))
                         class_id,x_center,y_center,width,height,angle = params
-                        # _angle = torch.abs(angle) if torch.sign(angle) == -1 else self.right_angle-angle
                         converted_label = self.xywhr2xyxyxyxy(class_id,x_center,y_center,width,height,angle,im_height,im_width)
                         out_file.write(" ".join(map(str, converted_label)) + '\n')
                 progress_retail = (index + 1) / total_fl * 100
@@ -654,9 +653,7 @@ class Base:
             self.weights.delete(0,tk.END)
             self.weights.insert(0,selected_file)
             self.model = YOLO(selected_file)
-            for widget in Frame_2.grid_slaves():
-                widget.grid_forget()
-            self.option_layout_parameters(Frame_2,self.model)
+            self.confirm_dataset_format(Frame_2)
         else:
             messagebox.showinfo("Notification","Please select the correct training file!")
             pass
