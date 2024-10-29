@@ -113,6 +113,7 @@ class CameraOperation:
                  n_save_image_size=0, n_win_gui_id=0, frame_rate=0, exposure_time=0, gain=0):
 
         self.obj_cam = obj_cam
+        self.cam = obj_cam
         self.st_device_list = st_device_list
         self.n_connect_num = n_connect_num
         self.b_open_device = b_open_device
@@ -135,7 +136,7 @@ class CameraOperation:
 
     # 打开相机
     def Open_device(self):
-        if not self.b_open_device:
+        if self.b_open_device:
             if self.n_connect_num < 0:
                 return MV_E_CALLORDER
 
@@ -176,6 +177,9 @@ class CameraOperation:
             if ret != 0:
                 print("set trigger mode fail! ret[0x%x]" % ret)
             return MV_OK
+        else: 
+            self.open_device_local()
+
 
     # 开始取图
     def Start_grabbing_origin(self, winHandle):
@@ -420,7 +424,7 @@ class CameraOperation:
 
         return ret
     
-    def Start_grabbing(self,index,task):
+    def Thread_process(self,index,task):
         if not self.b_start_grabbing and self.b_open_device:
             self.b_exit = False
             ret = self.obj_cam.MV_CC_StartGrabbing()
@@ -430,7 +434,7 @@ class CameraOperation:
             print("start grabbing successfully!")
             try:
                 thread_id = random.randint(1, 10000)
-                self.h_thread_handle = threading.Thread(target=CameraOperation.Work_thread, args=(self,index,task))
+                self.h_thread_handle = threading.Thread(target=CameraOperation.Work_thread_get_buff, args=(self,index,task))
                 self.h_thread_handle.start()
                 self.b_thread_closed = True
             finally:
@@ -439,56 +443,58 @@ class CameraOperation:
 
         return MV_E_CALLORDER
 
-    def Work_thread(self,index,task):
+    def Work_thread_get_buff(self,index,task):
         stOutFrame = MV_FRAME_OUT() 
         memset(byref(stOutFrame), 0, sizeof(stOutFrame))
         img_buff = None
         buf_cache = None
         numArray = None
-        while True:
-            ret = self.obj_cam.MV_CC_GetImageBuffer(stOutFrame, 5000)
-            if 0 == ret:
-                if None == buf_cache:
-                    buf_cache = (c_ubyte * stOutFrame.stFrameInfo.nFrameLen)()
-                self.st_frame_info = stOutFrame.stFrameInfo
-                cdll.msvcrt.memcpy(byref(buf_cache), stOutFrame.pBufAddr, self.st_frame_info.nFrameLen)
-                print ("Camera[%d]:get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (index,self.st_frame_info.nWidth, self.st_frame_info.nHeight, self.st_frame_info.nFrameNum))
-                self.n_save_image_size = self.st_frame_info.nWidth * self.st_frame_info.nHeight * 3 + 2048
-                if img_buff is None:
-                    img_buff = (c_ubyte * self.n_save_image_size)()
-            else:
-                # print("Camera[" + str(index) + "]:no data, ret = "+self.To_hex_str(ret))
-                if self.b_exit == True:
-                    break
-                continue
+        # while True:
+        ret = self.obj_cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+        if 0 == ret:
+            if None == buf_cache:
+                buf_cache = (c_ubyte * stOutFrame.stFrameInfo.nFrameLen)()
+            self.st_frame_info = stOutFrame.stFrameInfo
+            cdll.msvcrt.memcpy(byref(buf_cache), stOutFrame.pBufAddr, self.st_frame_info.nFrameLen)
+            print ("Camera[%d]:get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (index,self.st_frame_info.nWidth, self.st_frame_info.nHeight, self.st_frame_info.nFrameNum))
+            self.n_save_image_size = self.st_frame_info.nWidth * self.st_frame_info.nHeight * 3 + 2048
+            if img_buff is None:
+                img_buff = (c_ubyte * self.n_save_image_size)()
+        # else:
+        #     # print("Camera[" + str(index) + "]:no data, ret = "+self.To_hex_str(ret))
+        #     if self.b_exit == True:
+        #         break
+        #     continue
 
-            #转换像素结构体赋值
-            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
-            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
-            stConvertParam.nWidth = self.st_frame_info.nWidth
-            stConvertParam.nHeight = self.st_frame_info.nHeight
-            stConvertParam.pSrcData = cast(buf_cache, POINTER(c_ubyte))
-            stConvertParam.nSrcDataLen = self.st_frame_info.nFrameLen
-            stConvertParam.enSrcPixelType = self.st_frame_info.enPixelType 
+        #转换像素结构体赋值
+        stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+        memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+        stConvertParam.nWidth = self.st_frame_info.nWidth
+        stConvertParam.nHeight = self.st_frame_info.nHeight
+        stConvertParam.pSrcData = cast(buf_cache, POINTER(c_ubyte))
+        stConvertParam.nSrcDataLen = self.st_frame_info.nFrameLen
+        stConvertParam.enSrcPixelType = self.st_frame_info.enPixelType 
 
-            # RGB直接显示
-            if PixelType_Gvsp_RGB8_Packed == self.st_frame_info.enPixelType:
-                numArray = CameraOperation.Color_numpy(self,buf_cache,self.st_frame_info.nWidth,self.st_frame_info.nHeight)
-            else:
-                nConvertSize = self.st_frame_info.nWidth * self.st_frame_info.nHeight * 3
-                stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed
-                stConvertParam.pDstBuffer = (c_ubyte * nConvertSize)()
-                stConvertParam.nDstBufferSize = nConvertSize
-                ret = self.obj_cam.MV_CC_ConvertPixelType(stConvertParam)
-                if ret != 0:
-                    continue
-                cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, nConvertSize)
-                numArray = CameraOperation.Color_numpy(self,img_buff,self.st_frame_info.nWidth,self.st_frame_info.nHeight)
-            task.put(numArray)
-            if self.b_exit == True:
-                if img_buff is not None:
-                    del img_buff
-                break
+        # RGB直接显示
+        if PixelType_Gvsp_RGB8_Packed == self.st_frame_info.enPixelType:
+            numArray = CameraOperation.Color_numpy(self,buf_cache,self.st_frame_info.nWidth,self.st_frame_info.nHeight)
+        else:
+            nConvertSize = self.st_frame_info.nWidth * self.st_frame_info.nHeight * 3
+            stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed
+            stConvertParam.pDstBuffer = (c_ubyte * nConvertSize)()
+            stConvertParam.nDstBufferSize = nConvertSize
+            ret = self.obj_cam.MV_CC_ConvertPixelType(stConvertParam)
+            # if ret != 0:
+            #     continue
+            cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, nConvertSize)
+            numArray = CameraOperation.Color_numpy(self,img_buff,self.st_frame_info.nWidth,self.st_frame_info.nHeight)
+        print('numArray',numArray)
+        self.obj_cam.MV_CC_FreeImageBuffer(stOutFrame)
+        task.put(numArray)
+        if self.b_exit == True:
+            if img_buff is not None:
+                del img_buff
+            # break
 
     def Color_numpy(self,data,nWidth,nHeight):
         data_ = np.frombuffer(data, count=int(nWidth*nHeight*3), dtype=np.uint8, offset=0)
@@ -518,3 +524,143 @@ class CameraOperation:
         hexStr = chaDic.get(num, str(num)) + hexStr
         return hexStr
 
+    def IsImageColor(self,enType):
+        dates = {
+            PixelType_Gvsp_RGB8_Packed: 'color',
+            PixelType_Gvsp_BGR8_Packed: 'color',
+            PixelType_Gvsp_YUV422_Packed: 'color',
+            PixelType_Gvsp_YUV422_YUYV_Packed: 'color',
+            PixelType_Gvsp_BayerGR8: 'color',
+            PixelType_Gvsp_BayerRG8: 'color',
+            PixelType_Gvsp_BayerGB8: 'color',
+            PixelType_Gvsp_BayerBG8: 'color',
+            PixelType_Gvsp_BayerGB10: 'color',
+            PixelType_Gvsp_BayerGB10_Packed: 'color',
+            PixelType_Gvsp_BayerBG10: 'color',
+            PixelType_Gvsp_BayerBG10_Packed: 'color',
+            PixelType_Gvsp_BayerRG10: 'color',
+            PixelType_Gvsp_BayerRG10_Packed: 'color',
+            PixelType_Gvsp_BayerGR10: 'color',
+            PixelType_Gvsp_BayerGR10_Packed: 'color',
+            PixelType_Gvsp_BayerGB12: 'color',
+            PixelType_Gvsp_BayerGB12_Packed: 'color',
+            PixelType_Gvsp_BayerBG12: 'color',
+            PixelType_Gvsp_BayerBG12_Packed: 'color',
+            PixelType_Gvsp_BayerRG12: 'color',
+            PixelType_Gvsp_BayerRG12_Packed: 'color',
+            PixelType_Gvsp_BayerGR12: 'color',
+            PixelType_Gvsp_BayerGR12_Packed: 'color',
+            PixelType_Gvsp_Mono8: 'mono',
+            PixelType_Gvsp_Mono10: 'mono',
+            PixelType_Gvsp_Mono10_Packed: 'mono',
+            PixelType_Gvsp_Mono12: 'mono',
+            PixelType_Gvsp_Mono12_Packed: 'mono'}
+        return dates.get(enType, '未知')
+    
+    def open_device_local(self):
+        if self.n_connect_num < 0:
+                return MV_E_CALLORDER
+        nConnectionNum = int(self.n_connect_num)
+        self.ret = MvCamera.MV_CC_EnumDevices(self.tlayerType, self.deviceList)
+        if self.ret != 0:
+            print ("enum devices fail! self.ret[0x%x]" % self.ret)
+            sys.exit()
+        if self.deviceList.nDeviceNum == 0:
+            print ("find no device!")
+            sys.exit()
+        print ("Find %d devices!" % self.deviceList.nDeviceNum)
+        for i in range(0, self.deviceList.nDeviceNum):
+            mvcc_dev_info = cast(self.deviceList.pDeviceInfo[i], POINTER(MV_CC_DEVICE_INFO)).contents
+            if mvcc_dev_info.nTLayerType == MV_GIGE_DEVICE:
+                print("gige device: [%d]" % i)
+                strModeName = ""
+                for per in mvcc_dev_info.SpecialInfo.stGigEInfo.chModelName:
+                    strModeName = strModeName + chr(per)
+                print("device model name: %s" % strModeName)
+                nip1 = ((mvcc_dev_info.SpecialInfo.stGigEInfo.nCurrentIp & 0xff000000) >> 24)
+                nip2 = ((mvcc_dev_info.SpecialInfo.stGigEInfo.nCurrentIp & 0x00ff0000) >> 16)
+                nip3 = ((mvcc_dev_info.SpecialInfo.stGigEInfo.nCurrentIp & 0x0000ff00) >> 8)
+                nip4 = (mvcc_dev_info.SpecialInfo.stGigEInfo.nCurrentIp & 0x000000ff)
+                print("current ip: %d.%d.%d.%d\n" % (nip1, nip2, nip3, nip4))
+            elif mvcc_dev_info.nTLayerType == MV_USB_DEVICE:
+                print("u3v device: [%d]" % i)
+                strModeName = ""
+                for per in mvcc_dev_info.SpecialInfo.stUsb3VInfo.chModelName:
+                    if per == 0:
+                        break
+                    strModeName = strModeName + chr(per)
+                print("device model name: %s" % strModeName)
+
+                strSerialNumber = ""
+                for per in mvcc_dev_info.SpecialInfo.stUsb3VInfo.chSerialNumber:
+                    if per == 0:
+                        break
+                    strSerialNumber = strSerialNumber + chr(per)
+                print ("user serial number: %s" % strSerialNumber)
+        nConnectionNum=nConnectionNum
+        if int(nConnectionNum) >= self.deviceList.nDeviceNum:
+            print ("intput error!")
+            sys.exit()
+        stDeviceList = cast(self.deviceList.pDeviceInfo[int(nConnectionNum)], POINTER(MV_CC_DEVICE_INFO)).contents
+        self.ret = self.cam.MV_CC_CreateHandle(stDeviceList)
+        if self.ret != 0:
+            print ("create handle fail! self.ret[0x%x]" % self.ret)
+            sys.exit()
+        self.ret = self.cam.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
+        if self.ret != 0:
+            print ("open device fail! self.ret[0x%x]" % self.ret)
+            sys.exit()
+        stParam = MVCC_INTVALUE()
+        memset(byref(stParam), 0, sizeof(MVCC_INTVALUE))
+        self.ret = self.cam.MV_CC_GetIntValue("PayloadSize", stParam)
+        if self.ret != 0:
+            print("get payload size fail! self.ret[0x%x]" % self.ret)
+            sys.exit()
+        nPayloadSize = stParam.nCurValue
+        self.ret = self.cam.MV_CC_StartGrabbing()
+        if self.ret != 0:
+            print ("start grabbing fail! self.ret[0x%x]" % self.ret)
+            sys.exit()
+        data_buffer = (c_ubyte * nPayloadSize)()
+
+    def put_imgs_buff(self,task):
+        img_buff = None
+        stOutFrame = MV_FRAME_OUT()
+        memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+        ret = self.cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+        if None != stOutFrame.pBufAddr and 0 == ret:
+            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+            if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'mono':
+                print("mono!")
+                stConvertParam.enDstPixelType = PixelType_Gvsp_Mono8
+                nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight
+            elif self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
+                print("color!")
+                stConvertParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed  # opecv要用BGR，不能使用RGB
+                nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 3
+            else:
+                print("not support!!!")
+            if img_buff is None:
+                img_buff = (c_ubyte * stOutFrame.stFrameInfo.nFrameLen)()
+            stConvertParam.nWidth = stOutFrame.stFrameInfo.nWidth
+            stConvertParam.nHeight = stOutFrame.stFrameInfo.nHeight
+            stConvertParam.pSrcData = cast(stOutFrame.pBufAddr, POINTER(c_ubyte))
+            stConvertParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen
+            stConvertParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType
+            stConvertParam.pDstBuffer = (c_ubyte * nConvertSize)()
+            stConvertParam.nDstBufferSize = nConvertSize
+            self.ret = self.cam.MV_CC_ConvertPixelType(stConvertParam)
+            if self.ret != 0:
+                print("convert pixel fail! self.ret[0x%x]" % self.ret)
+                del stConvertParam.pSrcData
+                sys.exit()
+            if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
+                img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+                img_buff = np.frombuffer(img_buff, count=int(stConvertParam.nDstBufferSize), dtype=np.uint8)#data以流的形式读入转化成ndarray对象
+                img_buff = img_buff.reshape(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth,3)
+            else:
+                print("no data[0x%x]" % self.ret)
+        nRet = self.cam.MV_CC_FreeImageBuffer(stOutFrame)
+        task.put(img_buff)

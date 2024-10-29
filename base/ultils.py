@@ -223,6 +223,7 @@ class Base:
             'OBB': self.run_func_obb
         }
         self.tuple = setupTools.track_conn()
+        self.img_buffer = [] 
 
     def connect_database(self):
         cursor, db_connection  = self.database.Connect_MySQLServer()
@@ -337,28 +338,13 @@ class Base:
         size_model_all = int(self.size_model.get())
         conf_all = int(self.scale_conf_all.get()) / 100
         results = self.model(input_image,imgsz=size_model_all,conf=conf_all)
-        model_settings = [
-            {
-                'label_name':  self.model_name_labels[index].cget("text"),
-                'join_detect': self.join[index].get(),
-                'OK_jont': self.ok_vars[index].get(),
-                'NG_jont': self.ng_vars[index].get(),
-                'num_labels': int(self.num_inputs[index].get()),
-                'width_min': int(self.wn_inputs[index].get()),
-                'width_max': int(self.wx_inputs[index].get()),
-                'height_min': int(self.hn_inputs[index].get()),
-                'height_max': int(self.hx_inputs[index].get()),
-                'PLC_value': int(self.plc_inputs[index].get()),
-                'cmpnt_conf': int(self.conf_scales[index].get()),
-            }
-            for index in range(len(self.model_name_labels))
-        ]
+        model_settings = self._default_settings()
         settings_dict = {setting['label_name']: setting for setting in model_settings}
         boxes_dict = results[0].boxes.cpu().numpy()
         xywh_list = boxes_dict.xywh.tolist()
         cls_list = boxes_dict.cls.tolist()
         conf_list = boxes_dict.conf.tolist()
-        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect= [],[],[],False,'ERROR'
+        _valid_idex,_invalid_idex,list_cls_ng,_flag,lst_result= [],[],[],False,'ERROR'
         for index, (xywh, cls, conf) in enumerate(reversed(list(zip(xywh_list, cls_list, conf_list)))):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
@@ -366,33 +352,97 @@ class Base:
                     if xywh[2] < setting['width_min'] or xywh[2] > setting['width_max'] \
                             or xywh[3] < setting['height_min'] or xywh[3] > setting['height_max'] \
                             or int(conf*100) < setting['cmpnt_conf']:
-                        list_remove.append(int(index))
+                        _invalid_idex.append(int(index))
                         continue
-                    allowed_classes.append(results[0].names[int(cls)])
+                    _valid_idex.append(results[0].names[int(cls)])
                 else:
-                    list_remove.append(int(index))           
+                    _invalid_idex.append(int(index))           
         for model_name,setting in settings_dict.items():
             if setting['join_detect'] and setting['OK_jont']:
-                if allowed_classes.count(setting['label_name']) != setting['num_labels']:
-                    results_detect,ok_variable = 'NG',True
-                    list_label_ng.append(model_name)
+                if _valid_idex.count(setting['label_name']) != setting['num_labels']:
+                    lst_result,_flag = 'NG',True
+                    list_cls_ng.append(model_name)
             if setting['join_detect'] and setting['NG_jont']:
-                if model_name in allowed_classes:
-                    results_detect,ok_variable = 'NG',True
-                    list_label_ng.append(setting['label_name'])
-        if not ok_variable:
-            results_detect = 'OK'
+                if model_name in _valid_idex:
+                    lst_result,_flag = 'NG',True
+                    list_cls_ng.append(setting['label_name'])
+        if not _flag:
+            lst_result = 'OK'
         if self.make_cls_var.get():
             self._make_cls(input_image,results,model_settings)
-        show_img = np.squeeze(results[0].extract_npy(list_remove=list_remove))
+        show_img = np.squeeze(results[0].extract_npy(_invalid_idex=_invalid_idex))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
-        return output_image, results_detect, list_label_ng
+        return output_image, lst_result, list_cls_ng
     
     def run_func_obb(self, input_image, width, height):
         size_model_all = int(self.size_model.get())
         conf_all = int(self.scale_conf_all.get()) / 100
         results = self.model(input_image,imgsz=size_model_all,conf=conf_all)
+        model_settings = self._default_settings()
+        settings_dict = {setting['label_name']: setting for setting in model_settings}
+        obb_dict = results[0].obb.cpu().numpy()
+        xywhr_list = obb_dict.xywhr.tolist()
+        cls_list = obb_dict.cls.tolist()
+        conf_list = obb_dict.conf.tolist()
+        _valid_idex,_invalid_idex,list_cls_ng,_flag,lst_result,lst_check_location= [],[],[],False,'ERROR',[]
+        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
+            setting = settings_dict[results[0].names[int(cls)]]
+            if setting:
+                if setting['join_detect']:
+                    if (xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max']) \
+                            or (xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max']) \
+                            or (int(conf*100) < setting['cmpnt_conf']):
+                        _invalid_idex.append(int(index))
+                    try:
+                        if CHECK_LOCALTION_OBJS:
+                            list_cls_ng,_invalid_idex,lst_check_location,_flag = self._bbox_localtion_direction_objs(_flag,index,setting,xywhr,list_cls_ng,_invalid_idex,lst_check_location)
+                    except:
+                        pass
+                    _valid_idex.append(results[0].names[int(cls)])
+                else:
+                    _invalid_idex.append(int(index))  
+        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):  
+                setting = settings_dict[results[0].names[int(cls)]]
+                if setting:
+                    if setting['join_detect'] and setting['OK_jont']: 
+                        if _valid_idex.count(setting['label_name']) != setting['num_labels']:
+                            _flag = True
+                            list_cls_ng.append(setting['label_name'])
+                    if setting['join_detect'] and setting['NG_jont']:
+                        if setting['label_name'] or results[0].names[int(cls)] in _valid_idex:
+                            _flag = True
+                            list_cls_ng.append(setting['label_name'])
+                            _invalid_idex.append(int(index))  
+        lst_result = 'OK' if not _flag else 'NG'
+        if self.make_cls_var.get():       
+            self.xyxyxyxy2xywhr_indirect(input_image,results[0],xywhr_list,cls_list,conf_list,model_settings)
+        show_img = np.squeeze(results[0].extract_npy(list_remove=_invalid_idex))
+        show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
+        output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
+        lst_check_location = sorted(lst_check_location, key=lambda item: item[0])
+        lst_check_location = lst_check_location if lst_check_location else []
+        return output_image, lst_result, list_cls_ng,lst_check_location
+    
+    def _bbox_localtion_direction_objs(self,_flag,index,setting,xywhr,list_cls_ng,_invalid_idex,lst_check_location):
+        if CHECK_OBJECTS_ANGLE:
+            if setting['label_name'] in ITEM:
+                if (float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min']) or \
+                    (float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']):
+                    _flag = True
+                    list_cls_ng.append(setting['label_name']) 
+                    _invalid_idex.append(int(index))  
+        if CHECK_OBJECTS_COORDINATES:
+            if setting['label_name'] == ITEM[0]:
+                if xywhr[0] and xywhr[1] :
+                    id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
+                    id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
+                    lst_check_location.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn))
+                    if not val:
+                        _flag = True 
+        return list_cls_ng,_invalid_idex,lst_check_location,_flag
+    
+    def _default_settings(self):
         model_settings = [
             {
                 'label_name':  label.cget("text"),
@@ -411,60 +461,7 @@ class Base:
             }
             for index, label in enumerate(self.model_name_labels)
         ]
-        settings_dict = {setting['label_name']: setting for setting in model_settings}
-        obb_dict = results[0].obb.cpu().numpy()
-        xywhr_list = obb_dict.xywhr.tolist()
-        cls_list = obb_dict.cls.tolist()
-        conf_list = obb_dict.conf.tolist()
-        allowed_classes,list_remove,list_label_ng,ok_variable,results_detect,valid,list_remove_pred,is_angle = [],[],[],False,'ERROR',[],[],False
-        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
-            setting = settings_dict[results[0].names[int(cls)]]
-            if setting:
-                if setting['join_detect']:
-                    if (xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max']) \
-                            or (xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max']) \
-                            or (int(conf*100) < setting['cmpnt_conf']):
-                        list_remove.append(int(index))
-                    if CHECK_ANGLE:
-                        if setting['label_name'] in ITEM:
-                            if (float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min']) or \
-                                (float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']):
-                                results_detect,ok_variable = 'NG',True
-                                is_angle = True
-                                list_label_ng.append(setting['label_name']) 
-                                list_remove.append(int(index))  
-                    if CHECK_OBJECTS_COORDINATES:
-                        if setting['label_name'] == ITEM[0]:
-                            if xywhr[0] and xywhr[1] :
-                                id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
-                                id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
-                                valid.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn,is_angle))
-                                if not val:
-                                    results_detect,ok_variable = 'NG',True 
-                    allowed_classes.append(results[0].names[int(cls)])
-                else:
-                    list_remove.append(int(index))  
-        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):  
-                setting = settings_dict[results[0].names[int(cls)]]
-                if setting:
-                    if setting['join_detect'] and setting['OK_jont']: 
-                        if allowed_classes.count(setting['label_name']) != setting['num_labels']:
-                            results_detect,ok_variable = 'NG',True
-                            list_label_ng.append(setting['label_name'])
-                    if setting['join_detect'] and setting['NG_jont']:
-                        if setting['label_name'] or results[0].names[int(cls)] in allowed_classes:
-                            results_detect,ok_variable = 'NG',True
-                            list_label_ng.append(setting['label_name'])
-                            list_remove.append(int(index))  
-        results_detect = 'OK' if not ok_variable else 'NG'
-        if self.make_cls_var.get():       
-            self.xyxyxyxy2xywhr_indirect(input_image,results[0],xywhr_list,cls_list,conf_list,model_settings)
-        show_img = np.squeeze(results[0].extract_npy(list_remove=list_remove,list_remove_pred=list_remove_pred))
-        show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
-        output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
-        valid = sorted(valid, key=lambda item: item[0])
-        valid = valid if valid else []
-        return output_image, results_detect, list_label_ng,valid
+        return model_settings
     
     def _make_cls(self,image_path_mks_cls,results,model_settings):  
         with open(image_path_mks_cls[:-3] + 'txt', "a") as file:
@@ -738,7 +735,7 @@ class Base:
         t1 = time.time()
         for widget in camera_frame.winfo_children():
             widget.destroy()
-        image_result,results_detect,label_ng,_ = self.process_image_func(img1_orgin, width, height)
+        image_result,lst_result,label_ng,_ = self.process_image_func(img1_orgin, width, height)
         t2 = time.time() - t1
         time_processing = f'{str(int(t2*1000))}ms'
         img_pil = Image.fromarray(image_result)
@@ -748,13 +745,13 @@ class Base:
         canvas.create_image(0, 0, anchor=tk.NW, image=photo)
         canvas.image = photo
         canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
-        canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
+        canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {lst_result}', fill='green' if lst_result == 'OK' else 'red', font=('Segoe UI', 20))
         if not label_ng:
             canvas.create_text(10, 70, anchor=tk.NW, text=f' ', fill='green', font=('Segoe UI', 20))
         else:
             label_ng = ','.join(label_ng)
             canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {label_ng}', fill='red', font=('Segoe UI', 20))
-        return results_detect  
+        return lst_result  
     
     def detect_single_img(self, camera_frame):
         selected_file = filedialog.askopenfilename(title="Choose a file", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
@@ -811,13 +808,13 @@ class Base:
             self.selected_folder_detect_auto = selected_folder
             self.camera_frame = camera_frame
             self.image_path_mks_cls = []
-            self.results_detect = None
+            self.lst_result = None
             def process_next_image():
                 if self.image_index < len(self.selected_folder_detect_auto):
                     self.image_path_mks_cls = self.selected_folder_detect_auto[self.image_index]
                     width = 480
                     height = 450
-                    self.results_detect = self.handle_image(self.image_path_mks_cls, width, height,camera_frame)
+                    self.lst_result = self.handle_image(self.image_path_mks_cls, width, height,camera_frame)
                     self.image_index += 1
                     self.camera_frame.after(500, process_next_image)
             process_next_image()
@@ -847,8 +844,8 @@ class Base:
             for img in self.selected_folder_logging:
                 basename = os.path.basename(img)
                 if self.image_index < total_images:
-                    results_detect = self.handle_image(img, width, height, camera_frame)
-                    if results_detect == 'OK':
+                    lst_result = self.handle_image(img, width, height, camera_frame)
+                    if lst_result == 'OK':
                         if logging_ok_checkbox_var.get():
                             shutil.move(img, os.path.join(folder_ok.get(), basename))
                     else:

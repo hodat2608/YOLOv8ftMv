@@ -23,6 +23,7 @@ from IOConnection.basler_pylon.PylonExportImgBuffer import *
 from base.constants import *
 from base.extention import *
 from base.config import *
+from base.device_config import *
 import queue
 import concurrent.futures
 
@@ -36,17 +37,14 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.tab.pack(side=tk.LEFT, fill="both", expand=True)
         self.settings_notebook = ttk.Notebook(notebook)
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
-        self.n_camera_serial = 25039617
-        self.userset_device = 'UserSet1'
-        self.id_camera = 0
-        torch.cuda.set_device(self.id_camera)
-        self.device = torch.device(f"cuda:{self.id_camera}" if torch.cuda.is_available() else "cpu")
-        self.database = MySQL_Connection(HOST,ROOT,PASSWORD,DATABASE)
-        self.request_mvs = Initialize_Device_Env_MVS(self.id_camera)
-        self.request_pylon = Basler_Pylon_xFunc(self.n_camera_serial,self.userset_device)
+        torch.cuda.set_device(BASLER_UNITS_CAMERA_1['Identify Device'])
+        self.device = torch.device(f"cuda:{BASLER_UNITS_CAMERA_1['Identify Device']}" if torch.cuda.is_available() else "cpu")
+        self.database = MySQL_Connection(MYSQL_CONNECTION['HOST'],MYSQL_CONNECTION['ROOT'],MYSQL_CONNECTION['PASSWORD'],MYSQL_CONNECTION['DATABASE'])
+        self.request_mvs = Initialize_Device_Env_MVS(BASLER_UNITS_CAMERA_1['Identify Device'])
+        # self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'])
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-        self.name_table = TABLE_1
+        self.name_table = MYSQL_CONNECTION['TABLE 1']
         self.item_code_cfg = "EDFWOBB"
         self.image_files = []
         self.current_image_index = -1
@@ -88,8 +86,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.processing_functions = {'HBB': self.run_func_hbb,'OBB': self.run_func_obb}
         self.configuration_frame()
         self.layout_camframe()
-        self.funcloop()
-        # self.dual_submit()
+        # self.funcloop()
+        self.dual_submit()
         self.table = CFG_Table(self.frame_table)
         self.is_connected,_ = self.check_connect_database()
 
@@ -204,7 +202,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         super().process_func_local(selected_format)
         
     def export_image_request_mvs(self):
-        self.request_mvs.start_grabbing(self.task)
+        self.request_mvs.put_imgs_buff(self.task)
         self.img_buffer.append(self.task.get())
 
     def export_image_request_pylon(self):
@@ -231,7 +229,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
             self.write_plc_value_to_file()
 
     def dual_submit(self):
-        self.executor.submit(self.manual_excute_pylon)
+        self.executor.submit(self.manual_excute_mvs)
         self.executor.submit(self.extract)
         self.img_frame.after(TIME_LOOP, self.dual_submit)
 
@@ -265,8 +263,6 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
         self.table(valid)
         self.img_buffer = []
-        self.request_mvs.stop_grabbing()
-        self.request_pylon.Stop_grabbing()
 
     def extract_fh(self):
         width = 800
