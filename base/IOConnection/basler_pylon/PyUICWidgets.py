@@ -13,9 +13,12 @@ from PyQt5.QtWidgets import *
 import sys
 
 class Ui_MainWindow(object):
+    def __init__(self):
+        self.selected_folder_path = ''
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(920, 690)
+        MainWindow.resize(920, 740)
         
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -64,11 +67,11 @@ class Ui_MainWindow(object):
 
         self.groupGrab_1 = QtWidgets.QGroupBox(self.centralWidget)
         self.groupGrab_1.setEnabled(False)
-        self.groupGrab_1.setGeometry(QtCore.QRect(700, 260, 211, 100))
+        self.groupGrab_1.setGeometry(QtCore.QRect(700, 260, 211, 150))
         self.groupGrab_1.setObjectName("groupGrab")
 
         self.gridLayoutWidget_2_1 = QtWidgets.QWidget(self.groupGrab_1)
-        self.gridLayoutWidget_2_1.setGeometry(QtCore.QRect(5, 12, 200, 90))
+        self.gridLayoutWidget_2_1.setGeometry(QtCore.QRect(5, 12, 200, 140))
         self.gridLayoutWidget_2_1.setObjectName("gridLayoutWidget_2")
 
         self.gridLayout_2_1 = QtWidgets.QGridLayout(self.gridLayoutWidget_2_1)
@@ -89,6 +92,14 @@ class Ui_MainWindow(object):
         self.bnSaveImage.setEnabled(False)
         self.bnSaveImage.setObjectName("bnSaveImage")
         self.gridLayout_2_1.addWidget(self.bnSaveImage, 2, 0, 1, 2)
+
+        self.bnFolderBrowser = QtWidgets.QPushButton(self.gridLayoutWidget_2_1)
+        self.bnFolderBrowser.setText("Browse Folder")
+        self.gridLayout_2_1.addWidget(self.bnFolderBrowser, 3, 0, 1, 2)
+        self.bnFolderBrowser.clicked.connect(self.open_folder_dialog)
+
+        self.checkbox = QCheckBox("Check Option", self.gridLayoutWidget_2_1)
+        self.gridLayout_2_1.addWidget(self.checkbox, 4, 0, 1, 2)
 
         self.groupGrab = QtWidgets.QGroupBox(self.centralWidget)
         self.groupGrab.setEnabled(False)
@@ -120,7 +131,7 @@ class Ui_MainWindow(object):
 
         self.groupParam = QtWidgets.QGroupBox(self.centralWidget)
         self.groupParam.setEnabled(False)
-        self.groupParam.setGeometry(QtCore.QRect(700, 370, 211, 300))
+        self.groupParam.setGeometry(QtCore.QRect(700, 420, 211, 300))
         self.groupParam.setObjectName("groupParam")
 
         self.gridLayoutWidget_3 = QtWidgets.QWidget(self.groupParam)
@@ -221,6 +232,12 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def open_folder_dialog(self):
+        options = QFileDialog.Options()
+        folder_path = QFileDialog.getExistingDirectory(self, "Select a Folder", options=options)
+        if folder_path:
+            self.selected_folder_path = folder_path
+        
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "pylon Viewer"))
@@ -231,6 +248,8 @@ class Ui_MainWindow(object):
         self.groupGrab.setTitle(_translate("MainWindow", "Streaming"))
         self.groupGrab_1.setTitle(_translate("MainWindow", "Trigger Once"))
         self.bnSaveImage.setText(_translate("MainWindow", "Save Image"))
+        self.bnFolderBrowser.setText(_translate("MainWindow", "Browse Folder"))
+        self.checkbox.setText(_translate("MainWindow", "Check Save Image"))
         self.radioContinueMode.setText(_translate("MainWindow", "Mode on"))
         self.radioTriggerMode.setText(_translate("MainWindow", "Mode on"))
         self.bnStop.setText(_translate("MainWindow", "Stop"))

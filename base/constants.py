@@ -273,7 +273,7 @@ class setupTools():
                 return id,obj_x,obj_y,x,y
             
     @staticmethod     
-    def check_x_y(id,obj_x,obj_y,x,y):
+    def func_localtion(id,obj_x,obj_y,x,y):
         if obj_x<x-CAL_COOR or obj_x>x+CAL_COOR or obj_y<y-CAL_COOR or obj_y>y+CAL_COOR:
             return id,obj_x,obj_y,x,y,'NG',False
         else :

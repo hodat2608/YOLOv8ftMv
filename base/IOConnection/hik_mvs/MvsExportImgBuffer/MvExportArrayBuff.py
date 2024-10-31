@@ -40,6 +40,7 @@ class Initialize_Device_Env_MVS():
         self.obj_cam_operation = 0
         self.isOpen = False
         self.isGrabbing= False
+        self.b_exit = False
         self.isCalibMode = False # 是否是标定模式（获取原始图像）
         self.tlayerType = MV_GIGE_DEVICE | MV_USB_DEVICE
         self.initialize_device()
@@ -65,11 +66,11 @@ class Initialize_Device_Env_MVS():
         ret = MvCamera.MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, self.deviceList)
         if ret != 0:
             strError = "Enum devices fail! ret = :" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
+            
             return ret
 
         if self.deviceList.nDeviceNum == 0:
-            # QMessageBox.warning(mainWindow, "Info", "Find no device", QMessageBox.Ok)
+           
             return ret
         print("Find %d devices!" % self.deviceList.nDeviceNum)
 
@@ -126,27 +127,24 @@ class Initialize_Device_Env_MVS():
                 devList.append("[" + str(i) + "]USB: " + chUserDefinedName + " " + chModelName
                                + "(" + str(strSerialNumber) + ")")
 
-        # ui.ComboDevices.clear()
-        # ui.ComboDevices.addItems(devList)
-        # ui.ComboDevices.setCurrentIndex(0)
 
     # ch:打开相机 | en:open device
     def open_device(self):
        
         if self.isOpen:
-            # QMessageBox.warning(mainWindow, "Error", 'Camera is Running!', QMessageBox.Ok)
+            
             return MV_E_CALLORDER
 
         # nSelCamIndex = ui.ComboDevices.currentIndex()
         if self.nSelCamIndex < 0:
-            # QMessageBox.warning(mainWindow, "Error", 'Please select a camera!', QMessageBox.Ok)
+           
             return MV_E_CALLORDER
 
         self.obj_cam_operation = CameraOperation(obj_cam=self.cam,n_connect_num=self.nSelCamIndex)
         ret = self.obj_cam_operation.Open_device()
         if 0 != ret:
             strError = "Open device failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
+            
             self.isOpen = False
         else:
             self.set_continue_mode()
@@ -162,7 +160,7 @@ class Initialize_Device_Env_MVS():
         ret = self.obj_cam_operation.Start_grabbing_origin(self.nSelCamIndex+1,task)
         if ret != 0:
             strError = "Start grabbing failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
+           
         else:
             self.isGrabbing = True
             # enable_controls()
@@ -173,7 +171,7 @@ class Initialize_Device_Env_MVS():
         print('1')
         if ret != 0:
             strError = "Start grabbing failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
+            
         else:
             self.isGrabbing = True
             # enable_controls()
@@ -183,7 +181,7 @@ class Initialize_Device_Env_MVS():
         ret = self.obj_cam_operation.Stop_grabbing()
         if ret != 0:
             strError = "Stop grabbing failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
+           
         else:
             self.isGrabbing = False
             # enable_controls()
@@ -194,6 +192,7 @@ class Initialize_Device_Env_MVS():
         if self.isOpen:
             self.obj_cam_operation.Close_device()
             self.isOpen = False
+            self.b_exit = True
 
         self.isGrabbing = False
 
@@ -206,11 +205,6 @@ class Initialize_Device_Env_MVS():
         ret = self.obj_cam_operation.Set_trigger_mode(False)
         if ret != 0:
             strError = "Set continue mode failed ret:" + ToHexStr(ret) + " mode is " 
-        #     QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
-        # else:
-        #     ui.radioContinueMode.setChecked(True)
-        #     ui.radioTriggerMode.setChecked(False)
-        #     ui.bnSoftwareTrigger.setEnabled(False)
 
     # ch:设置软触发模式 | en:set software trigger mode
     def set_software_trigger_mode(self):
@@ -218,25 +212,18 @@ class Initialize_Device_Env_MVS():
         ret = self.obj_cam_operation.Set_trigger_mode(True)
         if ret != 0:
             strError = "Set trigger mode failed ret:" + ToHexStr(ret)
-        #     QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
-        # else:
-        #     ui.radioContinueMode.setChecked(False)
-        #     ui.radioTriggerMode.setChecked(True)
-        #     ui.bnSoftwareTrigger.setEnabled(self.isGrabbing)
-
+        
     # ch:设置触发命令 | en:set trigger software
     def trigger_once(self):
         ret = self.obj_cam_operation.Trigger_once()
         if ret != 0:
             strError = "TriggerSoftware failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
 
     # ch:存图 | en:save image
     def save_bmp(self):
         ret = self.obj_cam_operation.Save_Bmp()
         if ret != MV_OK:
             strError = "Save BMP failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
         else:
             print("Save image success")
 
@@ -245,17 +232,10 @@ class Initialize_Device_Env_MVS():
         ret = self.obj_cam_operation.Get_parameter()
         if ret != MV_OK:
             strError = "Get param failed ret:" + ToHexStr(ret)
-            # QMessageBox.warning(mainWindow, "Error", strError, QMessageBox.Ok)
-        # else:
-        #     ui.edtExposureTime.setText("{0:.2f}".format(obj_cam_operation.exposure_time))
-        #     ui.edtGain.setText("{0:.2f}".format(obj_cam_operation.gain))
-        #     ui.edtFrameRate.setText("{0:.2f}".format(obj_cam_operation.frame_rate))
 
     # ch: 设置参数 | en:set param
     def set_param(self,frame_rate,exposure,gain):
-        # frame_rate = ui.edtFrameRate.text()
-        # exposure = ui.edtExposureTime.text()
-        # gain = ui.edtGain.text()
+
         ret = self.obj_cam_operation.Set_parameter(frame_rate, exposure, gain)
         if ret != MV_OK:
             strError = "Set param failed ret:" + ToHexStr(ret)
@@ -297,7 +277,10 @@ class Initialize_Device_Env_MVS():
         return dates.get(enType, '未知')
     
     def open_device_local(self):
+        if self.nSelCamIndex < 0:
+            print ("num cam error!")
         nConnectionNum = self.nSelCamIndex
+        
         self.ret = MvCamera.MV_CC_EnumDevices(self.tlayerType, self.deviceList)
         if self.ret != 0:
             print ("enum devices fail! self.ret[0x%x]" % self.ret)
@@ -334,13 +317,14 @@ class Initialize_Device_Env_MVS():
                         break
                     strSerialNumber = strSerialNumber + chr(per)
                 print ("user serial number: %s" % strSerialNumber)
-        nConnectionNum=nConnectionNum
+
         if int(nConnectionNum) >= self.deviceList.nDeviceNum:
             print ("intput error!")
             sys.exit()
         stDeviceList = cast(self.deviceList.pDeviceInfo[int(nConnectionNum)], POINTER(MV_CC_DEVICE_INFO)).contents
         self.ret = self.cam.MV_CC_CreateHandle(stDeviceList)
         if self.ret != 0:
+            self.cam.MV_CC_DestroyHandle()
             print ("create handle fail! self.ret[0x%x]" % self.ret)
             sys.exit()
         self.ret = self.cam.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
@@ -359,45 +343,52 @@ class Initialize_Device_Env_MVS():
             print ("start grabbing fail! self.ret[0x%x]" % self.ret)
             sys.exit()
         data_buffer = (c_ubyte * nPayloadSize)()
+        self.isOpen = True
 
     def put_imgs_buff(self,task):
-        img_buff = None
-        stOutFrame = MV_FRAME_OUT()
-        memset(byref(stOutFrame), 0, sizeof(stOutFrame))
-        ret = self.cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
-        if None != stOutFrame.pBufAddr and 0 == ret:
-            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
-            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
-            if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'mono':
-                print("mono!")
-                stConvertParam.enDstPixelType = PixelType_Gvsp_Mono8
-                nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight
-            elif self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
-                print("color!")
-                stConvertParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed  # opecv要用BGR，不能使用RGB
-                nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 3
-            else:
-                print("not support!!!")
-            if img_buff is None:
-                img_buff = (c_ubyte * stOutFrame.stFrameInfo.nFrameLen)()
-            stConvertParam.nWidth = stOutFrame.stFrameInfo.nWidth
-            stConvertParam.nHeight = stOutFrame.stFrameInfo.nHeight
-            stConvertParam.pSrcData = cast(stOutFrame.pBufAddr, POINTER(c_ubyte))
-            stConvertParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen
-            stConvertParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType
-            stConvertParam.pDstBuffer = (c_ubyte * nConvertSize)()
-            stConvertParam.nDstBufferSize = nConvertSize
-            self.ret = self.cam.MV_CC_ConvertPixelType(stConvertParam)
-            if self.ret != 0:
-                print("convert pixel fail! self.ret[0x%x]" % self.ret)
-                del stConvertParam.pSrcData
-                sys.exit()
-            if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
-                img_buff = (c_ubyte * stConvertParam.nDstLen)()
-                cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
-                img_buff = np.frombuffer(img_buff, count=int(stConvertParam.nDstBufferSize), dtype=np.uint8)#data以流的形式读入转化成ndarray对象
-                img_buff = img_buff.reshape(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth,3)
-            else:
-                print("no data[0x%x]" % self.ret)
-        nRet = self.cam.MV_CC_FreeImageBuffer(stOutFrame)
-        task.put(img_buff)
+        if self.isOpen: 
+            img_buff = None
+            stOutFrame = MV_FRAME_OUT()
+            memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+            ret = self.cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+            if None != stOutFrame.pBufAddr and 0 == ret:
+                stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+                memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'mono':
+                    print("mono!")
+                    stConvertParam.enDstPixelType = PixelType_Gvsp_Mono8
+                    nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight
+                elif self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
+                    print("color!")
+                    stConvertParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed  # opecv要用BGR，不能使用RGB
+                    nConvertSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 3
+                else:
+                    print("not support!!!")
+                if img_buff is None:
+                    img_buff = (c_ubyte * stOutFrame.stFrameInfo.nFrameLen)()
+                stConvertParam.nWidth = stOutFrame.stFrameInfo.nWidth
+                stConvertParam.nHeight = stOutFrame.stFrameInfo.nHeight
+                stConvertParam.pSrcData = cast(stOutFrame.pBufAddr, POINTER(c_ubyte))
+                stConvertParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen
+                stConvertParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType
+                stConvertParam.pDstBuffer = (c_ubyte * nConvertSize)()
+                stConvertParam.nDstBufferSize = nConvertSize
+                self.ret = self.cam.MV_CC_ConvertPixelType(stConvertParam)
+                if self.ret != 0:
+                    print("convert pixel fail! self.ret[0x%x]" % self.ret)
+                    del stConvertParam.pSrcData
+                    sys.exit()
+                if self.IsImageColor(stOutFrame.stFrameInfo.enPixelType) == 'color':
+                    img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                    cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+                    img_buff = np.frombuffer(img_buff, count=int(stConvertParam.nDstBufferSize), dtype=np.uint8)#data以流的形式读入转化成ndarray对象
+                    img_buff = img_buff.reshape(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth,3)
+                else:
+                    print("no data[0x%x]" % self.ret)
+            nRet = self.cam.MV_CC_FreeImageBuffer(stOutFrame)
+            task.put(img_buff)
+            if self.b_exit:
+                if img_buff is not None:
+                    del img_buff
+        else: 
+            print('camera have not open yet! ')

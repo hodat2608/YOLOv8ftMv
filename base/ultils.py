@@ -21,6 +21,7 @@ from ultralytics.utils.files import increment_path
 from ultralytics.utils.plotting import Annotator
 import torch
 import math
+from collections import Counter
 from ultralytics.utils import ops
 from base.constants import *
 from base.extention import *
@@ -240,96 +241,71 @@ class Base:
         return cursor, db_connection
     
     def save_params_model(self):
-        confirm_save_data = messagebox.askokcancel("Confirm", "Are you sure you want to save the data?")
-        cursor,db_connection,check_connection,reconnect = self.connect_database()
+        confirm_save_data = messagebox.askokcancel("Confirm", "Are you sure ?")
+        cursor, db_connection, _, _ = self.connect_database()
         if confirm_save_data:
-            if self.datasets_format_model.get() == 'HBB':
-                try:
-                    item_code_value = str(self.item_code.get())
-                    dataset_format = self.datasets_format_model.get()
-                    weight = self.weights.get()
-                    confidence_all = int(self.scale_conf_all.get())
-                    size_model = int(self.size_model.get())
-                    try:
-                        cursor.execute(f"DELETE FROM {self.name_table} WHERE item_code = %s", (item_code_value,))
-                    except:
-                        pass
+            try:
+                item_code_value = str(self.item_code.get())
+                dataset_format = self.datasets_format_model.get()
+                weight = self.weights.get()
+                confidence_all = int(self.scale_conf_all.get())
+                size_model = int(self.size_model.get())
+                cursor.execute(f"DELETE FROM {self.name_table} WHERE item_code = %s", (item_code_value,))
 
-                    for index in range(len(self.model_name_labels)):
-                        label_name =  self.model_name_labels[index].cget("text")
-                        join_detect = self.join[index].get()
-                        OK_jont = self.ok_vars[index].get()
-                        NG_jont = self.ng_vars[index].get()
-                        num_labels = int(self.num_inputs[index].get())
-                        width_min = int(self.wn_inputs[index].get())
-                        width_max = int(self.wx_inputs[index].get())
-                        height_min = int(self.hn_inputs[index].get())
-                        height_max = int(self.hx_inputs[index].get())
-                        PLC_value = int(self.plc_inputs[index].get())
-                        cmpnt_conf = int(self.conf_scales[index].get())
-                        query_sql = f"""
-                        INSERT INTO {self.name_table}
-                        (item_code, weight, confidence_all, label_name,join_detect, OK, NG, num_labels, width_min, width_max, 
-                        height_min, height_max, PLC_value, cmpnt_conf, size_detection, dataset_format)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
-                        values = (item_code_value, weight, confidence_all, label_name, join_detect, OK_jont, NG_jont, num_labels, 
-                                width_min, width_max, height_min, height_max, PLC_value, cmpnt_conf,size_model,dataset_format)
-                        cursor.execute(query_sql,values)
-                    db_connection.commit()
-                    cursor.close()
-                    db_connection.close()
-                    messagebox.showinfo("Notification", "Saved parameters successfully!")
-                except Exception as e:
-                    cursor.close()
-                    db_connection.close()
-                    messagebox.showerror("Error", f"Data saved failed! Error: {str(e)}")
+                for index in range(len(self.model_name_labels)):
+                    values = self.get_values_for_insert(index, item_code_value, weight, confidence_all, size_model, dataset_format)
+                    query_sql = self.build_insert_query(dataset_format)
+                    cursor.execute(query_sql, values)
 
-            elif self.datasets_format_model.get() == 'OBB':
-                try:
-                    dataset_format = self.datasets_format_model.get()
-                    weight = self.weights.get()
-                    confidence_all = int(self.scale_conf_all.get())
-                    size_model = int(self.size_model.get())
-                    item_code_value = str(self.item_code.get())
-                    try:
-                        cursor.execute(f"DELETE FROM {self.name_table} WHERE item_code = %s", (item_code_value,))
-                    except:
-                        pass
+                db_connection.commit()
+                messagebox.showinfo("Notification", "Saved parameters successfully!")
 
-                    for index in range(len(self.model_name_labels)):
-                        label_name =  self.model_name_labels[index].cget("text")
-                        join_detect = self.join[index].get()
-                        OK_jont = self.ok_vars[index].get()
-                        NG_jont = self.ng_vars[index].get()
-                        num_labels = int(self.num_inputs[index].get())
-                        width_min = int(self.wn_inputs[index].get())
-                        width_max = int(self.wx_inputs[index].get())
-                        height_min = int(self.hn_inputs[index].get())
-                        height_max = int(self.hx_inputs[index].get())
-                        PLC_value = int(self.plc_inputs[index].get())
-                        cmpnt_conf = int(self.conf_scales[index].get())
-                        rotage_min = float(self.rn_inputs[index].get())
-                        rotage_max = float(self.rx_inputs[index].get())
-                        query_sql = f"""
-                        INSERT INTO {self.name_table}
-                        (item_code, weight, confidence_all, label_name,join_detect, OK, NG, num_labels, width_min, width_max, 
-                        height_min, height_max, PLC_value, cmpnt_conf, size_detection,rotage_min,rotage_max,dataset_format)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
-                        values = (item_code_value, weight, confidence_all, label_name, join_detect, OK_jont, NG_jont, num_labels, 
-                                width_min, width_max, height_min, height_max, PLC_value, cmpnt_conf,size_model,rotage_min,rotage_max,dataset_format)
-                        cursor.execute(query_sql,values)
-                    db_connection.commit()
-                    cursor.close()
-                    db_connection.close()
-                    messagebox.showinfo("Notification", "Saved parameters successfully!")
-                except Exception as e:
-                    cursor.close()
-                    db_connection.close()
-                    messagebox.showerror("Error", f"Data saved failed! Error: {str(e)}")  
+            except Exception as e:
+                messagebox.showerror("Error", f"Data saved failed! Error: {str(e)}")
+            
+            finally:
+                cursor.close()
+                db_connection.close()
+
+    def get_values_for_insert(self, index, item_code_value, weight, confidence_all, size_model, dataset_format):
+
+        label_name = self.model_name_labels[index].cget("text")
+        join_detect = self.join[index].get()
+        OK_jont = self.ok_vars[index].get()
+        NG_jont = self.ng_vars[index].get()
+        num_labels = int(self.num_inputs[index].get())
+        width_min = int(self.wn_inputs[index].get())
+        width_max = int(self.wx_inputs[index].get())
+        height_min = int(self.hn_inputs[index].get())
+        height_max = int(self.hx_inputs[index].get())
+        PLC_value = int(self.plc_inputs[index].get())
+        cmpnt_conf = int(self.conf_scales[index].get())
+
+        if dataset_format == 'OBB':
+            rotage_min = float(self.rn_inputs[index].get())
+            rotage_max = float(self.rx_inputs[index].get())
+            return (item_code_value, weight, confidence_all, label_name, join_detect, OK_jont, NG_jont, num_labels,
+                    width_min, width_max, height_min, height_max, PLC_value, cmpnt_conf, size_model, rotage_min, rotage_max, dataset_format)
+        else: 
+            return (item_code_value, weight, confidence_all, label_name, join_detect, OK_jont, NG_jont, num_labels,
+                    width_min, width_max, height_min, height_max, PLC_value, cmpnt_conf, size_model, dataset_format)
+
+    def build_insert_query(self, dataset_format):
+
+        if dataset_format == 'OBB':
+            return f"""
+                INSERT INTO {self.name_table} 
+                (item_code, weight, confidence_all, label_name, join_detect, OK, NG, num_labels, width_min, width_max, 
+                height_min, height_max, PLC_value, cmpnt_conf, size_detection, rotage_min, rotage_max, dataset_format)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
         else:
-            pass
+            return f"""
+                INSERT INTO {self.name_table} 
+                (item_code, weight, confidence_all, label_name, join_detect, OK, NG, num_labels, width_min, width_max, 
+                height_min, height_max, PLC_value, cmpnt_conf, size_detection, dataset_format)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
 
     def process_func_local(self,selected_format):
         self.process_image_func = self.processing_functions.get(selected_format, None)
@@ -360,6 +336,7 @@ class Base:
         for model_name,setting in settings_dict.items():
             if setting['join_detect'] and setting['OK_jont']:
                 if _valid_idex.count(setting['label_name']) != setting['num_labels']:
+                    count = Counter(_valid_idex)[setting['label_name']]
                     lst_result,_flag = 'NG',True
                     list_cls_ng.append(model_name)
             if setting['join_detect'] and setting['NG_jont']:
@@ -406,7 +383,7 @@ class Base:
                 setting = settings_dict[results[0].names[int(cls)]]
                 if setting:
                     if setting['join_detect'] and setting['OK_jont']: 
-                        if _valid_idex.count(setting['label_name']) != setting['num_labels']:
+                        if Counter(_valid_idex)[setting['label_name']] != setting['num_labels']:
                             _flag = True
                             list_cls_ng.append(setting['label_name'])
                     if setting['join_detect'] and setting['NG_jont']:
@@ -427,8 +404,9 @@ class Base:
     def _bbox_localtion_direction_objs(self,_flag,index,setting,xywhr,list_cls_ng,_invalid_idex,lst_check_location):
         if CHECK_OBJECTS_ANGLE:
             if setting['label_name'] in ITEM:
-                if (float(round(math.degrees(xywhr[4]),1)) < setting['rotage_min']) or \
-                    (float(round(math.degrees(xywhr[4]),1)) > setting['rotage_max']):
+                radian = (float(round(math.degrees(xywhr[4]),1)))
+                if (radian < setting['rotage_min']) or \
+                    (radian > setting['rotage_max']):
                     _flag = True
                     list_cls_ng.append(setting['label_name']) 
                     _invalid_idex.append(int(index))  
@@ -436,10 +414,12 @@ class Base:
             if setting['label_name'] == ITEM[0]:
                 if xywhr[0] and xywhr[1] :
                     id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
-                    id,obj_x,obj_y,x,y,conn,val = setupTools.check_x_y(id,obj_x,obj_y,x,y)
+                    id,obj_x,obj_y,x,y,conn,val = setupTools.func_localtion(id,obj_x,obj_y,x,y)
                     lst_check_location.append((id, obj_x, obj_y, x, y,round(math.degrees(xywhr[4]),1),conn))
                     if not val:
                         _flag = True 
+                else: 
+                    _flag = True 
         return list_cls_ng,_invalid_idex,lst_check_location,_flag
     
     def _default_settings(self):
@@ -539,30 +519,30 @@ class Base:
         shutil.rmtree(output_folder)
 
     def xyxyxyxy2xywhr_indirect(self,input_image,results,xywhr_list,cls_list,conf_list,model_settings):
-            settings_dict = {setting['label_name']: setting for setting in model_settings}
-            with open(input_image[:-3] + 'txt', 'a') as out_file:
-                out_file.write('YOLO_OBB\n')
-                for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
-                    setting = settings_dict[results.names[int(cls)]]
-                    xywhr_list[index][-1] = math.degrees(xywhr_list[index][-1])
-                    if xywhr_list[index][-1] > self._right_angle:
-                        xywhr_list[index][-1] = self.right_angle - xywhr_list[index][-1]
-                    else:
-                        xywhr_list[index][-1] = -(xywhr_list[index][-1])
-                    line = [int(cls_list[index])] + xywhr_list[index]  
-                    formatted_line = " ".join(["{:.6f}".format(x) if isinstance(x, float) else str(x) for x in line])
-                    if setting:
-                        if setting['join_detect']:
-                            if xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max'] \
-                                    or xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max'] \
-                                    or int(conf*100) < setting['cmpnt_conf']:
-                                    continue                           
-                            out_file.write(f'{formatted_line}\n')
-            path = Path(input_image).parent
-            path = os.path.join(path,'classes.txt')
-            with open(path, "w") as file:
-                for i in range(len(results.names)):
-                    file.write(f'{str(results.names[i])}\n')
+        settings_dict = {setting['label_name']: setting for setting in model_settings}
+        with open(input_image[:-3] + 'txt', 'a') as out_file:
+            out_file.write('YOLO_OBB\n')
+            for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
+                setting = settings_dict[results.names[int(cls)]]
+                xywhr_list[index][-1] = math.degrees(xywhr_list[index][-1])
+                if xywhr_list[index][-1] > self._right_angle:
+                    xywhr_list[index][-1] = self.right_angle - xywhr_list[index][-1]
+                else:
+                    xywhr_list[index][-1] = -(xywhr_list[index][-1])
+                line = [int(cls_list[index])] + xywhr_list[index]  
+                formatted_line = " ".join(["{:.6f}".format(x) if isinstance(x, float) else str(x) for x in line])
+                if setting:
+                    if setting['join_detect']:
+                        if xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max'] \
+                                or xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max'] \
+                                or int(conf*100) < setting['cmpnt_conf']:
+                                continue                           
+                        out_file.write(f'{formatted_line}\n')
+        path = Path(input_image).parent
+        path = os.path.join(path,'classes.txt')
+        with open(path, "w") as file:
+            for i in range(len(results.names)):
+                file.write(f'{str(results.names[i])}\n')
                
     def load_data_model(self):
         cursor, db_connection,_,_ = self.connect_database()
@@ -579,102 +559,93 @@ class Base:
             size_model = first_record['size_detection']
         return records,load_path_weight,load_item_code,load_confidence_all_scale,load_dataset_format,size_model
 
-    def load_parameters_model(self,model1,load_path_weight,load_item_code,load_confidence_all_scale,records,load_dataset_format,size_model,Frame_2):
-        self.datasets_format_model.delete(0, tk.END)
-        self.datasets_format_model.insert(0, load_dataset_format)
-        self.weights.delete(0, tk.END)
-        self.weights.insert(0, load_path_weight)
-        self.item_code.delete(0, tk.END)
-        self.item_code.insert(0, load_item_code)
-        self.size_model.set(size_model)
-        self.scale_conf_all.set(load_confidence_all_scale)
+    def load_parameters_model(self,initial_model,load_path_weight,load_item_code,
+        load_confidence_all_scale,records,load_dataset_format,size_model,Frame):
+        self._set_widget(self.datasets_format_model,load_dataset_format)
+        self._set_widget(self.weights,load_path_weight)
+        self._set_widget(self.item_code,load_item_code)
+        self._set_intvalue(self.size_model,size_model)
+        self._set_intvalue(self.scale_conf_all,load_confidence_all_scale)
         try:
             if load_dataset_format == 'HBB':
                 self.process_func_local(load_dataset_format)
-                for widget in Frame_2.grid_slaves():
-                    widget.grid_forget()
-                self.option_layout_parameters(Frame_2,self.model)
-                for index in range(len(model1.names)):          
+                self._clear_widget(Frame)
+                self.option_layout_parameters(Frame,self.model)
+                for index,_ in enumerate(initial_model.names):
                     for record in records:                
-                        if record['label_name'] == model1.names[index]:
-                            self.join[index].set(bool(record['join_detect']))
-                            self.ok_vars[index].set(bool(record['OK']))
-                            self.ng_vars[index].set(bool(record['NG']))
-                            self.num_inputs[index].delete(0, tk.END)
-                            self.num_inputs[index].insert(0, record['num_labels'])
-                            self.wn_inputs[index].delete(0, tk.END)
-                            self.wn_inputs[index].insert(0, record['width_min'])
-                            self.wx_inputs[index].delete(0, tk.END)
-                            self.wx_inputs[index].insert(0, record['width_max'])
-                            self.hn_inputs[index].delete(0, tk.END)
-                            self.hn_inputs[index].insert(0, record['height_min'])                
-                            self.hx_inputs[index].delete(0, tk.END)
-                            self.hx_inputs[index].insert(0, record['height_max'])
-                            self.plc_inputs[index].delete(0, tk.END)
-                            self.plc_inputs[index].insert(0, record['PLC_value'])
-                            self.conf_scales[index].set(record['cmpnt_conf'])
+                        if record['label_name'] == initial_model.names[index]:
+                            self._set_intvalue(self.join[index],bool(record['join_detect']))
+                            self._set_intvalue(self.ok_vars[index],bool(record['OK']))
+                            self._set_intvalue(self.ng_vars[index],bool(record['NG']))
+                            self._set_widget(self.num_inputs[index],record['num_labels'])
+                            self._set_widget(self.wn_inputs[index],record['width_min'])
+                            self._set_widget(self.wx_inputs[index],record['width_max'])
+                            self._set_widget(self.hn_inputs[index],record['height_min'])
+                            self._set_widget(self.hx_inputs[index],record['height_max'])
+                            self._set_widget(self.plc_inputs[index],record['PLC_value'])
+                            self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
             elif load_dataset_format == 'OBB':
                 self.process_func_local(load_dataset_format)
-                for widget in Frame_2.grid_slaves():
-                    widget.grid_forget()
-                self.option_layout_parameters_orient_bounding_box(Frame_2,self.model)
-                for index in range(len(model1.names)):          
+                self._clear_widget(Frame)
+                self.option_layout_parameters_orient_bounding_box(Frame,self.model)
+                for index,_ in enumerate(initial_model.names):          
                     for record in records:                
-                        if record['label_name'] == model1.names[index]:
-                            self.join[index].set(bool(record['join_detect']))
-                            self.ok_vars[index].set(bool(record['OK']))
-                            self.ng_vars[index].set(bool(record['NG']))
-                            self.num_inputs[index].delete(0, tk.END)
-                            self.num_inputs[index].insert(0, record['num_labels'])
-                            self.wn_inputs[index].delete(0, tk.END)
-                            self.wn_inputs[index].insert(0, record['width_min'])
-                            self.wx_inputs[index].delete(0, tk.END)
-                            self.wx_inputs[index].insert(0, record['width_max'])
-                            self.hn_inputs[index].delete(0, tk.END)
-                            self.hn_inputs[index].insert(0, record['height_min'])                
-                            self.hx_inputs[index].delete(0, tk.END)
-                            self.hx_inputs[index].insert(0, record['height_max'])
-                            self.plc_inputs[index].delete(0, tk.END)
-                            self.plc_inputs[index].insert(0, record['PLC_value'])
-                            self.conf_scales[index].set(record['cmpnt_conf'])
-                            self.rn_inputs[index].delete(0, tk.END)
-                            self.rn_inputs[index].insert(0, record['rotage_min'])                
-                            self.rx_inputs[index].delete(0, tk.END)
-                            self.rx_inputs[index].insert(0, record['rotage_max'])
+                        if record['label_name'] == initial_model.names[index]:
+                            self._set_intvalue(self.join[index],bool(record['join_detect']))
+                            self._set_intvalue(self.ok_vars[index],bool(record['OK']))
+                            self._set_intvalue(self.ng_vars[index],bool(record['NG']))
+                            self._set_widget(self.num_inputs[index], record['num_labels'])
+                            self._set_widget(self.wn_inputs[index], record['width_min'])
+                            self._set_widget(self.wx_inputs[index], record['width_max'])
+                            self._set_widget(self.hn_inputs[index], record['height_min'])
+                            self._set_widget(self.hx_inputs[index], record['height_max'])
+                            self._set_widget(self.plc_inputs[index], record['PLC_value'])
+                            self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
+                            self._set_widget(self.rn_inputs[index], record['rotage_min'])
+                            self._set_widget(self.rx_inputs[index], record['rotage_max'])
         except IndexError as e:
             messagebox.showerror("Error", f"Load parameters failed! Error: {str(e)}")
 
-    def change_model(self,Frame_2):
+    def change_model(self,Frame):
         selected_file = filedialog.askopenfilename(title="Choose a file", filetypes=[("Model Files", "*.pt")])
         if selected_file:
             self.weights.delete(0,tk.END)
             self.weights.insert(0,selected_file)
             self.model = YOLO(selected_file)
-            self.confirm_dataset_format(Frame_2)
+            self.confirm_dataset_format(Frame)
         else:
             messagebox.showinfo("Notification","Please select the correct training file!")
             pass
 
-    def confirm_dataset_format(self,Frame_2):
+    def confirm_dataset_format(self,Frame):
         if self.datasets_format_model.get() == 'OBB':
-            for widget in Frame_2.grid_slaves():
+            for widget in Frame.grid_slaves():
                 widget.grid_forget()
-            self.option_layout_parameters_orient_bounding_box(Frame_2,self.model)
+            self.option_layout_parameters_orient_bounding_box(Frame,self.model)
         elif self.datasets_format_model.get() =='HBB':
-            for widget in Frame_2.grid_slaves():
+            for widget in Frame.grid_slaves():
                 widget.grid_forget()
-            self.option_layout_parameters(Frame_2,self.model)
+            self.option_layout_parameters(Frame,self.model)
+
+    def _set_widget(self,widget,value):
+        widget.delete(0, tk.END)
+        widget.insert(0, value)
+
+    def _set_intvalue(self,int_widget,value):
+        int_widget.set(value)
+
+    def _clear_widget(self,Frame):
+        for widget in Frame.grid_slaves():
+            widget.grid_forget()
 
     def load_params_child(self):
-        weight = self.weights.get()
-        item_code_value = str(self.item_code.get())
         cursor, db_connection,_,_ = self.connect_database()
         try:
-            cursor.execute(f"SELECT * FROM {self.name_table} WHERE item_code = %s", (item_code_value,))
+            cursor.execute(f"SELECT * FROM {self.name_table} WHERE item_code = %s", (self.item_code.get().__str__(),))
         except Exception as e:
             messagebox.showwarning('Warning',f'{e}: Item Code does not exist')
         records = cursor.fetchall()
-        model = YOLO(weight)
+        model = YOLO(self.weights.get())
         cursor.close()
         db_connection.close()
         return records,model
@@ -682,52 +653,38 @@ class Base:
     def load_parameters_from_weight(self, records):
         confirm_load_parameters = messagebox.askokcancel("Confirm", "Are you sure you want to load the parameters?")
         if confirm_load_parameters:
-            records, model = self.load_params_child()
+            records, initial_model = self.load_params_child()
             try:
-                if self.datasets_format_model.get() == 'HBB':
-                    for index in range(len(model.names)):          
+                if self.datasets_format_model.get() == 'HBB':  
+                    for index,_ in enumerate(initial_model.names):    
                         for record in records:                
-                            if record['label_name'] == model.names[index]:
-                                self.join[index].set(bool(record['join_detect']))
-                                self.ok_vars[index].set(bool(record['OK']))
-                                self.ng_vars[index].set(bool(record['NG']))
-                                self.num_inputs[index].delete(0, tk.END)
-                                self.num_inputs[index].insert(0, record['num_labels'])
-                                self.wn_inputs[index].delete(0, tk.END)
-                                self.wn_inputs[index].insert(0, record['width_min'])
-                                self.wx_inputs[index].delete(0, tk.END)
-                                self.wx_inputs[index].insert(0, record['width_max'])
-                                self.hn_inputs[index].delete(0, tk.END)
-                                self.hn_inputs[index].insert(0, record['height_min'])                
-                                self.hx_inputs[index].delete(0, tk.END)
-                                self.hx_inputs[index].insert(0, record['height_max'])
-                                self.plc_inputs[index].delete(0, tk.END)
-                                self.plc_inputs[index].insert(0, record['PLC_value'])
-                                self.conf_scales[index].set(record['cmpnt_conf'])
+                            if record['label_name'] == initial_model.names[index]:
+                                self._set_intvalue(self.join[index],bool(record['join_detect']))
+                                self._set_intvalue(self.ok_vars[index],bool(record['OK']))
+                                self._set_intvalue(self.ng_vars[index],bool(record['NG']))
+                                self._set_widget(self.num_inputs[index],record['num_labels'])
+                                self._set_widget(self.wn_inputs[index],record['width_min'])
+                                self._set_widget(self.wx_inputs[index],record['width_max'])
+                                self._set_widget(self.hn_inputs[index],record['height_min'])
+                                self._set_widget(self.hx_inputs[index],record['height_max'])
+                                self._set_widget(self.plc_inputs[index],record['PLC_value'])
+                                self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
                 elif self.datasets_format_model.get() == 'OBB':
-                    for index in range(len(model.names)):          
+                    for index,_ in enumerate(initial_model.names):          
                         for record in records:                
-                            if record['label_name'] == model.names[index]:
-                                self.join[index].set(bool(record['join_detect']))
-                                self.ok_vars[index].set(bool(record['OK']))
-                                self.ng_vars[index].set(bool(record['NG']))
-                                self.num_inputs[index].delete(0, tk.END)
-                                self.num_inputs[index].insert(0, record['num_labels'])
-                                self.wn_inputs[index].delete(0, tk.END)
-                                self.wn_inputs[index].insert(0, record['width_min'])
-                                self.wx_inputs[index].delete(0, tk.END)
-                                self.wx_inputs[index].insert(0, record['width_max'])
-                                self.hn_inputs[index].delete(0, tk.END)
-                                self.hn_inputs[index].insert(0, record['height_min'])                
-                                self.hx_inputs[index].delete(0, tk.END)
-                                self.hx_inputs[index].insert(0, record['height_max'])
-                                self.plc_inputs[index].delete(0, tk.END)
-                                self.plc_inputs[index].insert(0, record['PLC_value'])
-                                self.conf_scales[index].set(record['cmpnt_conf'])
-                                self.rn_inputs[index].delete(0, tk.END)
-                                self.rn_inputs[index].insert(0, record['rotage_min'])                
-                                self.rx_inputs[index].delete(0, tk.END)
-                                self.rx_inputs[index].insert(0, record['rotage_max'])
+                            if record['label_name'] == initial_model.names[index]:
+                                self._set_intvalue(self.join[index],bool(record['join_detect']))
+                                self._set_intvalue(self.ok_vars[index],bool(record['OK']))
+                                self._set_intvalue(self.ng_vars[index],bool(record['NG']))
+                                self._set_widget(self.num_inputs[index], record['num_labels'])
+                                self._set_widget(self.wn_inputs[index], record['width_min'])
+                                self._set_widget(self.wx_inputs[index], record['width_max'])
+                                self._set_widget(self.hn_inputs[index], record['height_min'])
+                                self._set_widget(self.hx_inputs[index], record['height_max'])
+                                self._set_widget(self.plc_inputs[index], record['PLC_value'])
+                                self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
+                                self._set_widget(self.rn_inputs[index], record['rotage_min'])
+                                self._set_widget(self.rx_inputs[index], record['rotage_max'])
             except IndexError as e:
                 messagebox.showerror("Error", f"Load parameters failed! Error: {str(e)}")
 
@@ -959,7 +916,7 @@ class base_handle_video(PLC_Connection,MySQL_Connection):
 
         return records,load_path_weight,load_item_code,load_confidence_all_scale
 
-    def load_parameters_model_vid(self,model1,load_path_weight,load_item_code,load_confidence_all_scale,records):
+    def load_parameters_model_vid(self,initial_model,load_path_weight,load_item_code,load_confidence_all_scale,records):
         self.weights.delete(0, tk.END)
         self.weights.insert(0, load_path_weight)
         try:
@@ -969,9 +926,9 @@ class base_handle_video(PLC_Connection,MySQL_Connection):
         except: 
             pass
         try:
-            for index in range(len(model1.names)):          
+            for index in range(len(initial_model.names)):          
                 for record in records:                
-                    if record['label_name'] == model1.names[index]:
+                    if record['label_name'] == initial_model.names[index]:
                         self.join[index].set(bool(record['join_detect']))
                         self.ok_vars[index].set(bool(record['OK']))
                         self.ng_vars[index].set(bool(record['NG']))

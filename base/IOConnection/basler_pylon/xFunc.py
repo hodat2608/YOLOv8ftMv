@@ -173,6 +173,11 @@ class Basler_Pylon:
             q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
             pixmap = QtGui.QPixmap.fromImage(q_img)
             self.ui.labelDisplay.setPixmap(pixmap)
+            name_file= str(datetime.datetime.now()).replace(':', '-').replace(' ', '_').replace('.', '-')
+            if self.ui.checkbox.isChecked():
+                cv2.imwrite(f'{self.selected_folder_path}/{name_file}.jpg', image_bufer)
+            else: 
+                pass
 
     def close_device(self):
         self.camera.DestroyDevice()

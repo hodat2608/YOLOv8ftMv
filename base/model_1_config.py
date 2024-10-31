@@ -41,7 +41,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.device = torch.device(f"cuda:{BASLER_UNITS_CAMERA_1['Identify Device']}" if torch.cuda.is_available() else "cpu")
         self.database = MySQL_Connection(MYSQL_CONNECTION['HOST'],MYSQL_CONNECTION['ROOT'],MYSQL_CONNECTION['PASSWORD'],MYSQL_CONNECTION['DATABASE'])
         self.request_mvs = Initialize_Device_Env_MVS(BASLER_UNITS_CAMERA_1['Identify Device'])
-        # self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'])
+        self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'])
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         self.name_table = MYSQL_CONNECTION['TABLE 1']
@@ -92,7 +92,6 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.is_connected,_ = self.check_connect_database()
 
     def closed_device(self): 
-        self.request_mvs.stop_grabbing()
         self.request_mvs.close_device()
 
     def read_plc_keyence(self, data):
