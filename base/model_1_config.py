@@ -93,6 +93,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
 
     def closed_device(self): 
         self.request_mvs.close_device()
+        self.request_pylon.Close_device()
 
     def read_plc_keyence(self, data):
         return super().read_plc_keyence(data)

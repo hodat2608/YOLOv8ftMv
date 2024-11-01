@@ -9,7 +9,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from tkinter import filedialog
 import datetime
 from pypylon import genicam
-
+import threading
+import concurrent.futures
+from base.IOConnection.basler_pylon.PyUICWidgets import *
 class Basler_Pylon:
     def __init__(self,mainWindow,ui):
         self.mainWindow=mainWindow
@@ -17,9 +19,14 @@ class Basler_Pylon:
         self.camera = None
         self.isOpen = False
         self.isGrabbing= []
+        self.isStreaming=False
+        self.selected_folder_path = ''
         self.converter = pylon.ImageFormatConverter()
         self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        self.screen_geometry = QtWidgets.QApplication.desktop().screenGeometry()
+        self.fullScreen()
 
     def initialize_camera(self):
         self.devices = pylon.TlFactory.GetInstance().EnumerateDevices()
@@ -58,7 +65,7 @@ class Basler_Pylon:
         self.ui.bnSoftwareTrigger.setEnabled(True)
         self.ui.bnSaveImage.setEnabled(True)
         self.ui.groupGrab.setEnabled(True)
-        self.ui.radioContinueMode.setCheckable(False)
+        self.ui.radioContinueMode.setChecked(False)
         self.ui.bnStart.setEnabled(False)
         self.ui.bnStop.setEnabled(False)
         self.isOpen = True
@@ -157,27 +164,40 @@ class Basler_Pylon:
         self.ui.edtGain.setText("{0:.1f}".format(self.camera.Gain.GetValue()))
         self.ui.edtFrameRate.setText("{0:.1f}".format(self.camera.AcquisitionFrameRate.GetValue()))
 
-    def Trigger(self):
+    def Trigger1(self):
+        if self.isStreaming == True :
+            QMessageBox.warning(self.mainWindow,"Warning",f'Camera is in streaming mode! Please stop stream before trigger',QMessageBox.Ok)
+            return 
         self.isGrabbing = []
-        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-        grab_result = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-        if grab_result.GrabSucceeded():
-            image_bufer = grab_result.GetArray()
-            self.isGrabbing.append(image_bufer)
-            grab_result.Release()
+        try:
+            self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            grab_result = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+            if grab_result.GrabSucceeded():
+                frame_bufer = self.converter.Convert(grab_result)
+                img_buff = frame_bufer.GetArray()
+                img_resized = cv2.resize(img_buff, (IMAGE_WIDTH, IMAGE_HEIGHT))
+                img_flipped = cv2.flip(img_resized, 0)
+                image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
+                height, width, channel = image_rgb.shape
+                bytes_per_line = 3 * width
+                q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+                pixmap = QtGui.QPixmap.fromImage(q_img)
+                self.ui.labelDisplay.setPixmap(pixmap)
+                name_file = str(datetime.datetime.now()).replace(':', '-').replace(' ', '_').replace('.', '-')
+                if self.ui.checkbox.isChecked():
+                    cv2.imwrite(f'{self.ui.folder_path_entry.text()}/{name_file}.jpg', image_rgb)
+                else:
+                    pass
+                self.isGrabbing.append(pixmap)
+                grab_result.Release()
+            else:
+                print("Error: Grabbing failed.")    
+        except genicam.GenericException as e:
+            print("Error: Could not grab image.") 
+            print(e)   
+        finally:
             self.camera.StopGrabbing()
             self.camera.Close()
-            image_rgb = cv2.cvtColor(image_bufer, cv2.COLOR_BGR2RGB)
-            height,width,_ = image_rgb.shape
-            bytes_per_line = 3 * width
-            q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
-            pixmap = QtGui.QPixmap.fromImage(q_img)
-            self.ui.labelDisplay.setPixmap(pixmap)
-            name_file= str(datetime.datetime.now()).replace(':', '-').replace(' ', '_').replace('.', '-')
-            if self.ui.checkbox.isChecked():
-                cv2.imwrite(f'{self.selected_folder_path}/{name_file}.jpg', image_bufer)
-            else: 
-                pass
 
     def close_device(self):
         self.camera.DestroyDevice()
@@ -191,6 +211,7 @@ class Basler_Pylon:
         self.isOpen = False
 
     def start_stream(self):
+        self.isStreaming=True
         self.ui.bnStart.setEnabled(False)
         self.ui.bnStop.setEnabled(True)
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
@@ -203,14 +224,12 @@ class Basler_Pylon:
             if self.camera.IsGrabbing():
                 grab_result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
                 if grab_result.GrabSucceeded():
-                    frame_bufer = self.converter.Convert(grab_result)
-                    img_buff = frame_bufer.GetArray()
-                    image_rgb = cv2.cvtColor(img_buff, cv2.COLOR_BGR2RGB)
-                    height, width, channel = image_rgb.shape
-                    bytes_per_line = 3 * width
-                    q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
-                    pixmap = QtGui.QPixmap.fromImage(q_img)
-                    self.ui.labelDisplay.setPixmap(pixmap)
+                    self.data2defaultScreen(grab_result)
+                    try: 
+                        self.data2fullScreen(grab_result)
+                    except: 
+                        QMessageBox.warning(self.mainWindow,"Warning",f'Please Push Full Screen mode First',QMessageBox.Ok)
+                        pass
                 grab_result.Release()
         except genicam.GenericException as e:
             raise genicam.RuntimeException("Could not Streaming")
@@ -218,6 +237,7 @@ class Basler_Pylon:
     def stop_stream(self):
         if self.camera.IsGrabbing():
             self.camera.StopGrabbing()
+            self.isStreaming=False
         self.ui.bnStart.setEnabled(True)
         self.ui.bnStop.setEnabled(False)
         if hasattr(self, 'timer'):
@@ -252,7 +272,37 @@ class Basler_Pylon:
         else:
             print("Save operation was canceled.")
 
+    def open_folder_dialog(self):
+        folder_path = filedialog.askdirectory(title="Select Folder")
+        if folder_path:
+            self.ui.folder_path_entry.setText(folder_path)
 
+    def fullScreen(self): 
+        self.ui.openFullScreenWindow()
+
+    def data2defaultScreen(self,grab_result):
+        frame_bufer = self.converter.Convert(grab_result)
+        img_buff = frame_bufer.GetArray()
+        img_resized = cv2.resize(img_buff, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        img_flipped = cv2.flip(img_resized, 0)
+        image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
+        height, width, channel = image_rgb.shape
+        bytes_per_line = 3 * width
+        q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+        pixmap = QtGui.QPixmap.fromImage(q_img)
+        self.ui.labelDisplay.setPixmap(pixmap)
+    
+    def data2fullScreen(self,grab_result):
+        frame_bufer = self.converter.Convert(grab_result)
+        img_buff = frame_bufer.GetArray()
+        img_resized = cv2.resize(img_buff, (self.screen_geometry.width(), self.screen_geometry.height()))
+        img_flipped = cv2.flip(img_resized, 0)
+        image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
+        height, width, channel = image_rgb.shape
+        bytes_per_line = 3 * width
+        q_img = QtGui.QImage(image_rgb.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+        pixmap = QtGui.QPixmap.fromImage(q_img)
+        self.ui.fullScreenLabel.setPixmap(pixmap)
 
     
 

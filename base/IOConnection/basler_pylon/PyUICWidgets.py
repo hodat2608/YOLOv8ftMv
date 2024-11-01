@@ -12,13 +12,15 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 import sys
 
+IMAGE_WIDTH, IMAGE_HEIGHT = 660, 371
+
 class Ui_MainWindow(object):
     def __init__(self):
         self.selected_folder_path = ''
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(920, 740)
+        MainWindow.resize(920, 780)
         
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -32,7 +34,7 @@ class Ui_MainWindow(object):
         self.widgetDisplay.setObjectName("widgetDisplay")
 
         self.labelDisplay = QtWidgets.QLabel(self.widgetDisplay)
-        self.labelDisplay.setGeometry(0, 5, 660, 645)   
+        self.labelDisplay.setGeometry(0, 5, IMAGE_WIDTH, IMAGE_HEIGHT)   
         self.labelDisplay.setObjectName("labelDisplay")
 
         self.labelDisplay.setStyleSheet("border: 2px solid gray;")
@@ -67,7 +69,7 @@ class Ui_MainWindow(object):
 
         self.groupGrab_1 = QtWidgets.QGroupBox(self.centralWidget)
         self.groupGrab_1.setEnabled(False)
-        self.groupGrab_1.setGeometry(QtCore.QRect(700, 260, 211, 150))
+        self.groupGrab_1.setGeometry(QtCore.QRect(700, 290, 211, 150))
         self.groupGrab_1.setObjectName("groupGrab")
 
         self.gridLayoutWidget_2_1 = QtWidgets.QWidget(self.groupGrab_1)
@@ -93,21 +95,24 @@ class Ui_MainWindow(object):
         self.bnSaveImage.setObjectName("bnSaveImage")
         self.gridLayout_2_1.addWidget(self.bnSaveImage, 2, 0, 1, 2)
 
+        self.folder_path_entry = QtWidgets.QLineEdit(self.gridLayoutWidget_2_1)
+        self.folder_path_entry.setReadOnly(True)
+        self.gridLayout_2_1.addWidget(self.folder_path_entry, 3, 0, 1, 2)
+
         self.bnFolderBrowser = QtWidgets.QPushButton(self.gridLayoutWidget_2_1)
         self.bnFolderBrowser.setText("Browse Folder")
-        self.gridLayout_2_1.addWidget(self.bnFolderBrowser, 3, 0, 1, 2)
-        self.bnFolderBrowser.clicked.connect(self.open_folder_dialog)
+        self.gridLayout_2_1.addWidget(self.bnFolderBrowser, 3, 1, 1, 1)
 
         self.checkbox = QCheckBox("Check Option", self.gridLayoutWidget_2_1)
-        self.gridLayout_2_1.addWidget(self.checkbox, 4, 0, 1, 2)
+        self.gridLayout_2_1.addWidget(self.checkbox, 4, 0, 1, 1)
 
         self.groupGrab = QtWidgets.QGroupBox(self.centralWidget)
         self.groupGrab.setEnabled(False)
-        self.groupGrab.setGeometry(QtCore.QRect(700, 170, 211, 80))
+        self.groupGrab.setGeometry(QtCore.QRect(700, 170, 211, 110))
         self.groupGrab.setObjectName("groupGrab")
 
         self.gridLayoutWidget_2 = QtWidgets.QWidget(self.groupGrab)
-        self.gridLayoutWidget_2.setGeometry(QtCore.QRect(5, 12, 200, 70))
+        self.gridLayoutWidget_2.setGeometry(QtCore.QRect(5, 12, 200, 100))
         self.gridLayoutWidget_2.setObjectName("gridLayoutWidget_2")
 
         self.gridLayout_2 = QtWidgets.QGridLayout(self.gridLayoutWidget_2)
@@ -129,9 +134,14 @@ class Ui_MainWindow(object):
         self.bnStart.setObjectName("bnStart")
         self.gridLayout_2.addWidget(self.bnStart, 1, 0, 1, 1)
 
+        self.fullScreenButton = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        self.fullScreenButton.setObjectName("fullScreenButton")
+        self.fullScreenButton.setText("Full Screen")
+        self.gridLayout_2.addWidget(self.fullScreenButton,2, 0, 1, 1)
+
         self.groupParam = QtWidgets.QGroupBox(self.centralWidget)
         self.groupParam.setEnabled(False)
-        self.groupParam.setGeometry(QtCore.QRect(700, 420, 211, 300))
+        self.groupParam.setGeometry(QtCore.QRect(700, 450, 211, 300))
         self.groupParam.setObjectName("groupParam")
 
         self.gridLayoutWidget_3 = QtWidgets.QWidget(self.groupParam)
@@ -232,12 +242,28 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    def open_folder_dialog(self):
-        options = QFileDialog.Options()
-        folder_path = QFileDialog.getExistingDirectory(self, "Select a Folder", options=options)
-        if folder_path:
-            self.selected_folder_path = folder_path
-        
+    def openFullScreenWindow(self):
+        # Create a new window for full-screen display
+        self.fullScreenWindow = QtWidgets.QMainWindow()
+        self.fullScreenWindow.setWindowTitle("Full Screen Display")
+
+        # Set window size to screen size
+        screen_geometry = QtWidgets.QApplication.desktop().screenGeometry()
+        self.fullScreenWindow.setGeometry(screen_geometry)
+
+        # Label in the full-screen window
+        self.fullScreenLabel = QtWidgets.QLabel(self.fullScreenWindow)
+        self.fullScreenLabel.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height())
+        self.fullScreenLabel.setStyleSheet("border: 2px solid gray; background-color: black;")
+
+        self.closeButton = QtWidgets.QPushButton("X", self.fullScreenWindow)
+        self.closeButton.setGeometry(screen_geometry.width() - 50, 10, 40, 30)  # Position it at the top right corner
+        self.closeButton.setStyleSheet("background-color: red; color: white; border: none;")
+        self.closeButton.clicked.connect(self.fullScreenWindow.close)
+
+        # Show full-screen window
+        self.fullScreenWindow.showFullScreen()
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "pylon Viewer"))
@@ -247,9 +273,10 @@ class Ui_MainWindow(object):
         self.bnEnum.setText(_translate("MainWindow", "Collect Device"))
         self.groupGrab.setTitle(_translate("MainWindow", "Streaming"))
         self.groupGrab_1.setTitle(_translate("MainWindow", "Trigger Once"))
-        self.bnSaveImage.setText(_translate("MainWindow", "Save Image"))
+        self.bnSaveImage.setText(_translate("MainWindow", "Save Single Image"))
+        self.folder_path_entry.setText(_translate("MainWindow", " **/*.jpg"))
         self.bnFolderBrowser.setText(_translate("MainWindow", "Browse Folder"))
-        self.checkbox.setText(_translate("MainWindow", "Check Save Image"))
+        self.checkbox.setText(_translate("MainWindow", "Save Image"))
         self.radioContinueMode.setText(_translate("MainWindow", "Mode on"))
         self.radioTriggerMode.setText(_translate("MainWindow", "Mode on"))
         self.bnStop.setText(_translate("MainWindow", "Stop"))

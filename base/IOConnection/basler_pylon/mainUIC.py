@@ -18,10 +18,12 @@ class BaslerPylon():
         ui.bnClose.clicked.connect(cfg.close_device)
         ui.radioTriggerMode.clicked.connect(cfg.set_software_trigger_mode)
         ui.radioContinueMode.clicked.connect(cfg.set_continue_mode)
-        ui.bnSoftwareTrigger.clicked.connect(cfg.Trigger)
+        ui.bnSoftwareTrigger.clicked.connect(cfg.Trigger1)
         ui.bnStart.clicked.connect(cfg.start_stream)
         ui.bnStop.clicked.connect(cfg.stop_stream)
         ui.bnSaveImage.clicked.connect(cfg.save_img)
+        ui.bnFolderBrowser.clicked.connect(cfg.open_folder_dialog)
+        ui.fullScreenButton.clicked.connect(cfg.fullScreen)
         mainWindow.show()
         app.exec_()
 
