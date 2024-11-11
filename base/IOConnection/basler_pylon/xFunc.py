@@ -177,6 +177,7 @@ class Basler_Pylon:
                 img_buff = frame_bufer.GetArray()
                 img_resized = cv2.resize(img_buff, (IMAGE_WIDTH, IMAGE_HEIGHT))
                 img_flipped = cv2.flip(img_resized, 0)
+                img_flipped = cv2.flip(img_flipped, 1)
                 image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
                 height, width, channel = image_rgb.shape
                 bytes_per_line = 3 * width
@@ -285,6 +286,7 @@ class Basler_Pylon:
         img_buff = frame_bufer.GetArray()
         img_resized = cv2.resize(img_buff, (IMAGE_WIDTH, IMAGE_HEIGHT))
         img_flipped = cv2.flip(img_resized, 0)
+        img_flipped = cv2.flip(img_flipped, 1)
         image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
         height, width, channel = image_rgb.shape
         bytes_per_line = 3 * width
@@ -297,6 +299,7 @@ class Basler_Pylon:
         img_buff = frame_bufer.GetArray()
         img_resized = cv2.resize(img_buff, (self.screen_geometry.width(), self.screen_geometry.height()))
         img_flipped = cv2.flip(img_resized, 0)
+        img_flipped = cv2.flip(img_flipped, 1)
         image_rgb = cv2.cvtColor(img_flipped, cv2.COLOR_BGR2RGB)
         height, width, channel = image_rgb.shape
         bytes_per_line = 3 * width

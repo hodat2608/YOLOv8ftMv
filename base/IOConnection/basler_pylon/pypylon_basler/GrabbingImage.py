@@ -13,7 +13,7 @@ for d in devices:
 print(devices[0])
 camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice(devices[0]))
 camera.Open()
-camera.UserSetSelector.SetValue('UserSet1')
+camera.UserSetSelector.SetValue('Default')
 camera.UserSetLoad.Execute()
 camera.Width.SetValue(1722)
 camera.Height.SetValue(960)
@@ -41,7 +41,7 @@ if grabResult.GrabSucceeded():
     image = grabResult.GetArray()
     cv2.namedWindow('Video', cv2.WINDOW_AUTOSIZE)
     cv2.imshow('Video', image)
-    cv2.imwrite('Videssso.jpg', image)
+    cv2.imwrite('dat.jpg', image)
     k = cv2.waitKey(1)
     # if k == 27:
     #     break

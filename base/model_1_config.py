@@ -37,13 +37,16 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.tab.pack(side=tk.LEFT, fill="both", expand=True)
         self.settings_notebook = ttk.Notebook(notebook)
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
-        torch.cuda.set_device(BASLER_UNITS_CAMERA_1['Identify Device'])
-        self.device = torch.device(f"cuda:{BASLER_UNITS_CAMERA_1['Identify Device']}" if torch.cuda.is_available() else "cpu")
+        torch.cuda.set_device(f'{CUDA_DEVICE['cuda:1']}')
+        self.device = torch.device(f"cuda:{CUDA_DEVICE['cuda:1']}" if torch.cuda.is_available() else "cpu")
         self.database = MySQL_Connection(MYSQL_CONNECTION['HOST'],MYSQL_CONNECTION['ROOT'],MYSQL_CONNECTION['PASSWORD'],MYSQL_CONNECTION['DATABASE'])
+        '''
         self.request_mvs = Initialize_Device_Env_MVS(BASLER_UNITS_CAMERA_1['Identify Device'])
+        '''
         self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'])
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.name_table = MYSQL_CONNECTION['TABLE 1']
         self.item_code_cfg = "EDFWOBB"
         self.image_files = []
@@ -82,17 +85,35 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.img_frame = None
         self.process_image_func = None
         self.img_buffer = []
-        self.trigger = '1000'
+        self.trigger = "DM4004"
+        self.busy_c1 = "DM4010"
+        self.ready = 'DM4002'
+        self.complete = 'DM4006'
         self.processing_functions = {'HBB': self.run_func_hbb,'OBB': self.run_func_obb}
         self.configuration_frame()
         self.layout_camframe()
-        # self.funcloop()
         self.dual_submit()
         self.table = CFG_Table(self.frame_table)
         self.is_connected,_ = self.check_connect_database()
+        self.host = "192.168.0.10"
+        self.port = 8501
+        self.connected = False
+        self.check_connection()
+        self.request_pylon.StartGrabbingInit()
+        self.writedata(self.socket,self.ready,1)
+        self.counter = 0
+
+    def check_connection(self):
+        if not self.connected:
+            if super().socket_connect(self.host, self.port):
+                self.connected = True
+                print('Connected to PLC')
+            else:
+                print("Kết nối thất bại, sẽ thử lại...")
+                self.tab.after(2000, self.check_connection)
 
     def closed_device(self): 
-        self.request_mvs.close_device()
+        # self.request_mvs.close_device()
         self.request_pylon.Close_device()
 
     def read_plc_keyence(self, data):
@@ -202,17 +223,17 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         super().process_func_local(selected_format)
         
     def export_image_request_mvs(self):
-        self.request_mvs.put_imgs_buff(self.task)
+        # self.request_mvs.put_imgs_buff(self.task)
         self.img_buffer.append(self.task.get())
 
-    def export_image_request_pylon(self):
-        self.request_pylon.Start_grabbing(self.task)
+    def push_imgs_ppl(self):
+        self.request_pylon.TriggerOnce(self.task,self.trigger,self.busy_c1)
         self.img_buffer.append(self.task.get())
 
     def funcloop(self):
         value_plc = self.read_plc_value_from_file()
         if value_plc==1:
-            self.extract_fh()
+            self.callback_fh()
             self.write_plc_value_to_file()
         self.img_frame.after(TIME_LOOP, self.funcloop)
 
@@ -225,22 +246,48 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def manual_excute_pylon(self):
         value_plc = self.read_plc_value_from_file()
         if value_plc==1:
-            self.executor.submit(self.export_image_request_pylon)
+            self.executor.submit(self.push_imgs_ppl)
             self.write_plc_value_to_file()
 
     def dual_submit(self):
         self.executor.submit(self.manual_excute_mvs)
-        self.executor.submit(self.extract)
+        self.executor.submit(self.callback)
         self.img_frame.after(TIME_LOOP, self.dual_submit)
 
     def auto_excute(self):
-        value_plc = self.read_plc_keyence(self.trigger)
-        if value_plc==1:
-            self.executor.submit(self.export_image_request_mvs)
-            self.write_plc_keyence(self.trigger,1)
+        try: 
+            if self.readdata(self.socket,self.trigger) == 1:
+                self.executor.submit(self.push_imgs_ppl)
+                self.executor.submit(self.callback)
+        except: 
+            self.writedata(self.socket,self.ready,0)
         self.img_frame.after(TIME_LOOP, self.auto_excute)
 
-    def extract(self):
+    def dual_process(self):
+        try: 
+            if self.readdata(self.socket, self.trigger) == 1:
+                threading.Thread(target=self.push_imgs_ppl).start()
+                threading.Thread(target=self.callback).start()
+        except: 
+            self.writedata(self.socket, self.ready, 0)
+        self.img_frame.after(TIME_LOOP, self.auto_excute)
+
+    def write_plc_keyence_pylon(self,register, data, soc):
+        a = 'WR '
+        b = ' '
+        c = '\x0D'
+        d = a+ register + b + str(data) + c
+        datasend  = d.encode("UTF-8")
+        soc.sendall(datasend)
+        datares = soc.recv(1024)
+
+    def write_plc_pylon(self,plc_name,register,data,soc):
+        if plc_name == 'k':
+            self.write_plc_keyence_pylon(f'DM{register}',data,soc)
+        else:
+            pass
+
+    def callback(self):
         width = 800
         height = 800
         t1 = time.time()
@@ -264,7 +311,7 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.table(valid)
         self.img_buffer = []
 
-    def extract_fh(self):
+    def callback_fh(self):
         width = 800
         height = 800
         t1 = time.time()

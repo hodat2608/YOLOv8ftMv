@@ -10,21 +10,27 @@ from tkinter import filedialog,messagebox
 import datetime
 from pypylon import genicam
 import threading
+from base.ultils import PLC_Connection
+import socket
 
-class Basler_Pylon_xFunc:
-    def __init__(self,n_serial,n_UserSetSelector):
+class Basler_Pylon_xFunc(PLC_Connection):
+    def __init__(self,n_serial,n_UserSetSelector,*args, **kwargs):
+        super(Basler_Pylon_xFunc, self).__init__(*args, **kwargs)
+        super().__init__()
         self.n_serial = str(n_serial) 
         self.UserSetSelector = n_UserSetSelector
         self.camera = None
         self.isOpen = False
         self.isGrabbing= []
         self.converter = pylon.ImageFormatConverter()
+        self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
         self.b_start_grabbing=False
         self.b_exit = False
         self.b_thread_closed = False
         self.initialize_device()
+        
 
     def initialize_device(self): 
         try: 
@@ -53,19 +59,34 @@ class Basler_Pylon_xFunc:
             self.camera.UserSetLoad.Execute()
             self.isOpen = True
             self.b_thread_closed = False
-
-    def TriggerOnce(self, task):
-        self.isGrabbing = []
+    
+    def StartGrabbingInit(self): 
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-        grab_result = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
+
+    def TriggerOnce(self,task,trigger,busy_c1):
+        self.writedata(self.socket,trigger,0)
+        self.writedata(self.socket,busy_c1,1)
+        self.writedata(self.socket,busy_c1,0)
+        grab_result = self.camera.RetrieveResult(10, pylon.TimeoutHandling_ThrowException)
         if grab_result.GrabSucceeded():
             image_bufer = grab_result.GetArray()
             image_rgb = cv2.cvtColor(image_bufer, cv2.COLOR_BGR2RGB)
             task.put(image_rgb)
-        grab_result.Release()
-        if self.b_exit:
-            if image_bufer is not None:
-                del image_bufer
+       
+    def saveImage(self,grabResult,typeImage,quality = 100):
+        now = datetime.now()
+        dateTime = now.strftime("%d-%m-%Y_%H-%M-%S")
+        img = pylon.PylonImage()
+        img.AttachGrabResultBuffer(grabResult)
+        if typeImage == "jpg" :
+            ipo = pylon.ImagePersistenceOptions()
+            ipo.SetQuality(quality)
+            filename = f"{dateTime}.jpg"
+            img.Save(pylon.ImageFileFormat_Jpeg, filename, ipo)
+        else :
+            filename = f"{dateTime}.png"
+            img.Save(pylon.ImageFileFormat_Png, filename)
+
 
     def Start_grabbing(self, task):
         if not self.b_start_grabbing and self.isOpen:

@@ -134,11 +134,3 @@ head:
   - [[15, 18, 21], 1, OBB, [nc, 1]] # OBB(P3, P4, P5)
 
 '''
-MYSQL_CONNECTION = { 
-  'HOST' : "127.0.0.1",
-  'ROOT' : "root1",
-  'PASSWORD' : "987654321",
-  'DATABASE' : "connect_database_model",
-  'TABLE 1' : 'model_connection_model1',
-  'TABLE 2' : 'model_connection_model2',
-  }

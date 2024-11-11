@@ -134,6 +134,48 @@ class PLC_Connection():
         data1 = int(datadeco)
         return data1
 
+    def socket_connect(soc,host,port):
+        """
+        Thực hiện kết nối với PLC
+        host : địa chỉ IP của PLC
+        port : port sử dụng bên PLC
+        """
+        try:
+            soc.connect((host,port))
+            return True
+        except :
+            return False
+
+    def readdata(soc,data):
+        """
+        # Thực hiện đọc dữ liệu từ PLC 
+        data : Thanh ghi bên PLC. Vd : DM1
+        """
+        a = 'RD '
+        c = '\x0D'
+        d = a + data + c
+        datasend = d.encode("UTF-8")
+        soc.sendall(datasend)
+        response = soc.recv(1024)
+        dataFromPLC = response.decode("UTF-8")
+        return int(dataFromPLC)
+
+
+    def writedata(soc,register,data):
+        """
+        Ghi dữ liệu vào PLC 
+        register : Thanh ghi cần ghi dữ liệu bên PLC
+        data : Dữ liệu cần truyền là
+        """
+        a = 'WR '
+        b = ' '
+        c = '\x0D'
+        d = a+ register + b + str(data) + c
+        datasend  = d.encode("UTF-8")
+        soc.sendall(datasend)
+        response = soc.recv(1024)
+
+
     def write_plc_keyence(self,register,data):
         a = 'WR '
         b = ' '
@@ -177,7 +219,7 @@ class PLC_Connection():
 
 
 
-class Base:
+class Base(PLC_Connection):
 
     def __init__(self):
         self.database = MySQL_Connection(None,None,None,None) 
@@ -225,6 +267,9 @@ class Base:
         }
         self.tuple = setupTools.track_conn()
         self.img_buffer = [] 
+        self.counter = 0
+        self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.complete = 'DM4006'
 
     def connect_database(self):
         cursor, db_connection  = self.database.Connect_MySQLServer()
@@ -353,6 +398,7 @@ class Base:
         return output_image, lst_result, list_cls_ng
     
     def run_func_obb(self, input_image, width, height):
+        self.counter +=1
         size_model_all = int(self.size_model.get())
         conf_all = int(self.scale_conf_all.get()) / 100
         results = self.model(input_image,imgsz=size_model_all,conf=conf_all)
@@ -373,7 +419,9 @@ class Base:
                         _invalid_idex.append(int(index))
                     try:
                         if CHECK_LOCALTION_OBJS:
-                            list_cls_ng,_invalid_idex,lst_check_location,_flag = self._bbox_localtion_direction_objs(_flag,index,setting,xywhr,list_cls_ng,_invalid_idex,lst_check_location)
+                            list_cls_ng, _invalid_idex, lst_check_location, _flag = \
+                        self._bbox_localtion_direction_objs(
+                            _flag, index, setting, xywhr, list_cls_ng, _invalid_idex, lst_check_location)
                     except:
                         pass
                     _valid_idex.append(results[0].names[int(cls)])
@@ -392,6 +440,9 @@ class Base:
                             list_cls_ng.append(setting['label_name'])
                             _invalid_idex.append(int(index))  
         lst_result = 'OK' if not _flag else 'NG'
+        if self.counter == 6: 
+            self.writedata(self.socket,self.complete,1)
+            self.counter = 0
         if self.make_cls_var.get():       
             self.xyxyxyxy2xywhr_indirect(input_image,results[0],xywhr_list,cls_list,conf_list,model_settings)
         show_img = np.squeeze(results[0].extract_npy(list_remove=_invalid_idex))
@@ -401,7 +452,8 @@ class Base:
         lst_check_location = lst_check_location if lst_check_location else []
         return output_image, lst_result, list_cls_ng,lst_check_location
     
-    def _bbox_localtion_direction_objs(self,_flag,index,setting,xywhr,list_cls_ng,_invalid_idex,lst_check_location):
+    def _bbox_localtion_direction_objs(self,_flag,index,setting,xywhr,
+        list_cls_ng,_invalid_idex,lst_check_location):
         if CHECK_OBJECTS_ANGLE:
             if setting['label_name'] in ITEM:
                 radian = (float(round(math.degrees(xywhr[4]),1)))
