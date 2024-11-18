@@ -14,23 +14,25 @@ from base.ultils import PLC_Connection
 import socket
 
 class Basler_Pylon_xFunc(PLC_Connection):
-    def __init__(self,n_serial,n_UserSetSelector,*args, **kwargs):
-        super(Basler_Pylon_xFunc, self).__init__(*args, **kwargs)
-        super().__init__()
+    def __init__(self,n_serial,n_UserSetSelector,host, port,*args, **kwargs):
+        super(Basler_Pylon_xFunc, self).__init__(host, port,*args, **kwargs)
+        super().__init__(host, port)
         self.n_serial = str(n_serial) 
         self.UserSetSelector = n_UserSetSelector
         self.camera = None
         self.isOpen = False
         self.isGrabbing= []
         self.converter = pylon.ImageFormatConverter()
-        self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
         self.b_start_grabbing=False
         self.b_exit = False
         self.b_thread_closed = False
-        self.initialize_device()
+        self.initialize_camera_indirect()
         
+
+    def check_connect(self):
+        return self.isOpen
 
     def initialize_device(self): 
         try: 
@@ -40,6 +42,27 @@ class Basler_Pylon_xFunc(PLC_Connection):
         except: 
             messagebox.showwarning('Warning','Unable to load Basler device! Please check your connection')
             pass
+
+    def initialize_camera_indirect(self):
+        self.devices = pylon.TlFactory.GetInstance().EnumerateDevices()
+        if len(self.devices) == 0:
+            messagebox.showwarning('Warning','No Connected device, check your connection!')
+            return
+        if not self.isOpen :
+            for index, device in enumerate(self.devices):
+                device.GetDeviceClass()
+                if device.GetSerialNumber() == self.n_serial: 
+                    if device.GetSerialNumber() == self.n_serial: 
+                        self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice(self.devices[index]))
+                        self.camera.Open()
+                        self.isOpen = True
+                        self.b_thread_closed = False
+                        print('Connected to Camera Device')
+                    else : 
+                        messagebox.showwarning('Warning','Camera serial number error. Please try again!')
+                        return
+        else: 
+            messagebox.showwarning('warning','Camera is running')
 
     def enum_devices(self):
         self.devices = pylon.TlFactory.GetInstance().EnumerateDevices()
@@ -63,15 +86,15 @@ class Basler_Pylon_xFunc(PLC_Connection):
     def StartGrabbingInit(self): 
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
-    def TriggerOnce(self,task,trigger,busy_c1):
-        self.writedata(self.socket,trigger,0)
-        self.writedata(self.socket,busy_c1,1)
-        self.writedata(self.socket,busy_c1,0)
+    def TriggerOnce(self,task,trigger,busy_c1,socket):
+        self.writedata(socket,trigger,0)
+        self.writedata(socket,busy_c1,1)
+        self.writedata(socket,busy_c1,0)
+        time.sleep(0.015)
         grab_result = self.camera.RetrieveResult(10, pylon.TimeoutHandling_ThrowException)
         if grab_result.GrabSucceeded():
-            image_bufer = grab_result.GetArray()
-            image_rgb = cv2.cvtColor(image_bufer, cv2.COLOR_BGR2RGB)
-            task.put(image_rgb)
+            image_bufer = grab_result.Array
+            task.put(image_bufer)
        
     def saveImage(self,grabResult,typeImage,quality = 100):
         now = datetime.now()

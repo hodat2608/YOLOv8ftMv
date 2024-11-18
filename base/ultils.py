@@ -134,7 +134,7 @@ class PLC_Connection():
         data1 = int(datadeco)
         return data1
 
-    def socket_connect(soc,host,port):
+    def socket_connect(self,soc,host,port):
         """
         Thực hiện kết nối với PLC
         host : địa chỉ IP của PLC
@@ -146,7 +146,7 @@ class PLC_Connection():
         except :
             return False
 
-    def readdata(soc,data):
+    def readdata(self,soc,data):
         """
         # Thực hiện đọc dữ liệu từ PLC 
         data : Thanh ghi bên PLC. Vd : DM1
@@ -161,7 +161,7 @@ class PLC_Connection():
         return int(dataFromPLC)
 
 
-    def writedata(soc,register,data):
+    def writedata(self,soc,register,data):
         """
         Ghi dữ liệu vào PLC 
         register : Thanh ghi cần ghi dữ liệu bên PLC
@@ -351,22 +351,36 @@ class Base(PLC_Connection):
                 height_min, height_max, PLC_value, cmpnt_conf, size_detection, dataset_format)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+    def torch_load_nodemap(self,source=None,task=None,device=None):
+        return YOLO(model=source,task=task).to(device=device)
 
     def process_func_local(self,selected_format):
         self.process_image_func = self.processing_functions.get(selected_format, None)
+
+    def preprocess(self,img):
+        if isinstance(img, str):
+            image_array = cv2.imread(img)
+            fh = True
+            return image_array,fh
+        elif isinstance(img, np.ndarray):
+            fh =False
+            image_array = img
+            imgRGB = cv2.cvtColor(image_array,cv2.COLOR_BayerGB2RGB)
+            imgRGB = cv2.flip(imgRGB,0)
+            return cv2.cvtColor(imgRGB, cv2.COLOR_BGR2RGB),fh
         
     def run_func_hbb(self, input_image, width, height):
+        current_time = time.time()
         size_model_all = int(self.size_model.get())
-        conf_all = int(self.scale_conf_all.get()) / 100
+        conf_all = int(self.scale_conf_all.get()) / 100 
         results = self.model(input_image,imgsz=size_model_all,conf=conf_all)
-        model_settings = self._default_settings()
-        settings_dict = {setting['label_name']: setting for setting in model_settings}
+        settings_dict = {setting['label_name']: setting for setting in self.default_model_params}
         boxes_dict = results[0].boxes.cpu().numpy()
         xywh_list = boxes_dict.xywh.tolist()
         cls_list = boxes_dict.cls.tolist()
         conf_list = boxes_dict.conf.tolist()
         _valid_idex,_invalid_idex,list_cls_ng,_flag,lst_result= [],[],[],False,'ERROR'
-        for index, (xywh, cls, conf) in enumerate(reversed(list(zip(xywh_list, cls_list, conf_list)))):
+        for index, (xywh, cls, conf) in enumerate(reversed(list(zip(xywh_list,cls_list,conf_list)))):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
                 if setting['join_detect']:
@@ -381,7 +395,6 @@ class Base(PLC_Connection):
         for model_name,setting in settings_dict.items():
             if setting['join_detect'] and setting['OK_jont']:
                 if _valid_idex.count(setting['label_name']) != setting['num_labels']:
-                    count = Counter(_valid_idex)[setting['label_name']]
                     lst_result,_flag = 'NG',True
                     list_cls_ng.append(model_name)
             if setting['join_detect'] and setting['NG_jont']:
@@ -391,35 +404,34 @@ class Base(PLC_Connection):
         if not _flag:
             lst_result = 'OK'
         if self.make_cls_var.get():
-            self._make_cls(input_image,results,model_settings)
+            self._make_cls(input_image,results,self.default_model_params)
         show_img = np.squeeze(results[0].extract_npy(_invalid_idex=_invalid_idex))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
-        return output_image, lst_result, list_cls_ng
+        lst_check_location,time_processing = None,f'{str(int((time.time()-current_time)*1000))}ms'
+        return output_image,lst_result,list_cls_ng,lst_check_location,time_processing
     
-    def run_func_obb(self, input_image, width, height):
+    def run_func_obb(self,source,width,height):
+        current_time = time.time()
         self.counter +=1
         size_model_all = int(self.size_model.get())
-        conf_all = int(self.scale_conf_all.get()) / 100
-        results = self.model(input_image,imgsz=size_model_all,conf=conf_all)
-        model_settings = self._default_settings()
-        settings_dict = {setting['label_name']: setting for setting in model_settings}
-        obb_dict = results[0].obb.cpu().numpy()
-        xywhr_list = obb_dict.xywhr.tolist()
-        cls_list = obb_dict.cls.tolist()
-        conf_list = obb_dict.conf.tolist()
+        conf_all = int(self.scale_conf_all.get())/100
+        source,fh = self.preprocess(source)
+        results = self.model(source,imgsz=size_model_all,conf=conf_all)
+        settings_dict = {setting['label_name']: setting for setting in self.default_model_params}
+        _xywhr,_cls,_conf=results[0].obb.cpu().numpy().xywhr.tolist(),results[0].obb.cpu().numpy().cls.tolist(),results[0].obb.cpu().numpy().conf.tolist()
         _valid_idex,_invalid_idex,list_cls_ng,_flag,lst_result,lst_check_location= [],[],[],False,'ERROR',[]
-        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):
+        for index,(xywhr,cls,conf) in enumerate(reversed(list(zip(_xywhr,_cls,_conf)))):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
                 if setting['join_detect']:
                     if (xywhr[2] < setting['width_min'] or xywhr[2] > setting['width_max']) \
-                            or (xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max']) \
-                            or (int(conf*100) < setting['cmpnt_conf']):
+                        or (xywhr[3] < setting['height_min'] or xywhr[3] > setting['height_max']) \
+                        or (int(conf*100) < setting['cmpnt_conf']):
                         _invalid_idex.append(int(index))
                     try:
-                        if CHECK_LOCALTION_OBJS:
-                            list_cls_ng, _invalid_idex, lst_check_location, _flag = \
+                        if LOCALTION_OBJS:
+                            list_cls_ng,_invalid_idex,lst_check_location,_flag = \
                         self._bbox_localtion_direction_objs(
                             _flag, index, setting, xywhr, list_cls_ng, _invalid_idex, lst_check_location)
                     except:
@@ -427,7 +439,7 @@ class Base(PLC_Connection):
                     _valid_idex.append(results[0].names[int(cls)])
                 else:
                     _invalid_idex.append(int(index))  
-        for index, (xywhr, cls, conf) in enumerate(reversed(list(zip(xywhr_list, cls_list, conf_list)))):  
+        for index,(xywhr,cls,conf) in enumerate(reversed(list(zip(_xywhr,_cls,_conf)))):  
                 setting = settings_dict[results[0].names[int(cls)]]
                 if setting:
                     if setting['join_detect'] and setting['OK_jont']: 
@@ -440,21 +452,23 @@ class Base(PLC_Connection):
                             list_cls_ng.append(setting['label_name'])
                             _invalid_idex.append(int(index))  
         lst_result = 'OK' if not _flag else 'NG'
-        if self.counter == 6: 
-            self.writedata(self.socket,self.complete,1)
-            self.counter = 0
+        if not fh:
+            if self.counter == 6: 
+                self.writedata(self.socket,self.complete,1)
+                self.counter = 0
         if self.make_cls_var.get():       
-            self.xyxyxyxy2xywhr_indirect(input_image,results[0],xywhr_list,cls_list,conf_list,model_settings)
+            self.xyxyxyxy2xywhr_indirect(source,results[0],_xywhr,_cls,_conf,self.default_model_params)
         show_img = np.squeeze(results[0].extract_npy(list_remove=_invalid_idex))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
         lst_check_location = sorted(lst_check_location, key=lambda item: item[0])
-        lst_check_location = lst_check_location if lst_check_location else []
-        return output_image, lst_result, list_cls_ng,lst_check_location
+        lst_check_location = lst_check_location if lst_check_location != [] else []
+        time_processing = f'{str(int((time.time()-current_time)*1000))}ms'
+        return output_image,lst_result,list_cls_ng,lst_check_location,time_processing
     
     def _bbox_localtion_direction_objs(self,_flag,index,setting,xywhr,
         list_cls_ng,_invalid_idex,lst_check_location):
-        if CHECK_OBJECTS_ANGLE:
+        if OBJECTS_ANGLE:
             if setting['label_name'] in ITEM:
                 radian = (float(round(math.degrees(xywhr[4]),1)))
                 if (radian < setting['rotage_min']) or \
@@ -462,7 +476,7 @@ class Base(PLC_Connection):
                     _flag = True
                     list_cls_ng.append(setting['label_name']) 
                     _invalid_idex.append(int(index))  
-        if CHECK_OBJECTS_COORDINATES:
+        if OBJECTS_COORDINATES:
             if setting['label_name'] == ITEM[0]:
                 if xywhr[0] and xywhr[1] :
                     id,obj_x,obj_y,x,y = setupTools.tracking_id(self.tuple,xywhr[0],xywhr[1])
@@ -475,7 +489,7 @@ class Base(PLC_Connection):
         return list_cls_ng,_invalid_idex,lst_check_location,_flag
     
     def _default_settings(self):
-        model_settings = [
+        self.default_model_params = [
             {
                 'label_name':  label.cget("text"),
                 'join_detect': self.join[index].get(),
@@ -493,9 +507,10 @@ class Base(PLC_Connection):
             }
             for index, label in enumerate(self.model_name_labels)
         ]
-        return model_settings
     
     def _make_cls(self,image_path_mks_cls,results,model_settings):  
+        ims = cv2.imread(image_path_mks_cls)
+        w,h,_ = ims.shape
         with open(image_path_mks_cls[:-3] + 'txt', "a") as file:
             for params in results.xywhn:
                 params = params.tolist()
@@ -504,8 +519,8 @@ class Base(PLC_Connection):
                     param = [round(i,6) for i in param]
                     number_label = int(param[5])
                     conf_result = float(param[4])
-                    width_result = float(param[2])*1200
-                    height_result = float(param[3])*1600
+                    width_result = float(param[2])*w
+                    height_result = float(param[3])*h
                     for setting in model_settings:
                         if results.names[int(number_label)] == setting['label_name']:
                             if setting['join_detect']: 
@@ -636,6 +651,7 @@ class Base(PLC_Connection):
                             self._set_widget(self.hx_inputs[index],record['height_max'])
                             self._set_widget(self.plc_inputs[index],record['PLC_value'])
                             self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
+                
             elif load_dataset_format == 'OBB':
                 self.process_func_local(load_dataset_format)
                 self._clear_widget(Frame)
@@ -655,15 +671,15 @@ class Base(PLC_Connection):
                             self._set_intvalue(self.conf_scales[index],record['cmpnt_conf'])
                             self._set_widget(self.rn_inputs[index], record['rotage_min'])
                             self._set_widget(self.rx_inputs[index], record['rotage_max'])
+                self._default_settings()
         except IndexError as e:
             messagebox.showerror("Error", f"Load parameters failed! Error: {str(e)}")
 
     def change_model(self,Frame):
         selected_file = filedialog.askopenfilename(title="Choose a file", filetypes=[("Model Files", "*.pt")])
         if selected_file:
-            self.weights.delete(0,tk.END)
-            self.weights.insert(0,selected_file)
-            self.model = YOLO(selected_file)
+            self._set_widget(self.weights,selected_file)
+            self.model = self.torch_load_nodemap(source=selected_file)
             self.confirm_dataset_format(Frame)
         else:
             messagebox.showinfo("Notification","Please select the correct training file!")
@@ -697,7 +713,7 @@ class Base(PLC_Connection):
         except Exception as e:
             messagebox.showwarning('Warning',f'{e}: Item Code does not exist')
         records = cursor.fetchall()
-        model = YOLO(self.weights.get())
+        model = self.torch_load_nodemap(source=self.weights.get())
         cursor.close()
         db_connection.close()
         return records,model
@@ -741,12 +757,9 @@ class Base(PLC_Connection):
                 messagebox.showerror("Error", f"Load parameters failed! Error: {str(e)}")
 
     def handle_image(self,img1_orgin, width, height,camera_frame):
-        t1 = time.time()
         for widget in camera_frame.winfo_children():
             widget.destroy()
-        image_result,lst_result,label_ng,_ = self.process_image_func(img1_orgin, width, height)
-        t2 = time.time() - t1
-        time_processing = f'{str(int(t2*1000))}ms'
+        image_result,lst_result,label_ng,_,time_processing = self.process_image_func(img1_orgin, width, height)
         img_pil = Image.fromarray(image_result)
         photo = ImageTk.PhotoImage(img_pil)
         canvas = tk.Canvas(camera_frame, width=width, height=height)

@@ -26,6 +26,7 @@ from base.config import *
 from base.device_config import *
 import queue
 import concurrent.futures
+import keyboard
 
 class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def __init__(self,notebook,*args, **kwargs):
@@ -37,13 +38,13 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.tab.pack(side=tk.LEFT, fill="both", expand=True)
         self.settings_notebook = ttk.Notebook(notebook)
         notebook.add(self.settings_notebook, text="Camera Configure Setup")
-        torch.cuda.set_device(f'{CUDA_DEVICE['cuda:1']}')
-        self.device = torch.device(f"cuda:{CUDA_DEVICE['cuda:1']}" if torch.cuda.is_available() else "cpu")
+        torch.cuda.set_device(int(f'{CUDA_DEVICE['cuda:0']}'))
+        self.device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
         self.database = MySQL_Connection(MYSQL_CONNECTION['HOST'],MYSQL_CONNECTION['ROOT'],MYSQL_CONNECTION['PASSWORD'],MYSQL_CONNECTION['DATABASE'])
         '''
         self.request_mvs = Initialize_Device_Env_MVS(BASLER_UNITS_CAMERA_1['Identify Device'])
         '''
-        self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'])
+        self.request_pylon = Basler_Pylon_xFunc(BASLER_UNITS_CAMERA_1['Serial number'],BASLER_UNITS_CAMERA_1['User Set Default'],host='192.168.0.10',port=8501)
         self.task= queue.Queue()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -84,36 +85,33 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         self.cls = False
         self.img_frame = None
         self.process_image_func = None
-        self.img_buffer = []
-        self.trigger = "DM4004"
-        self.busy_c1 = "DM4010"
-        self.ready = 'DM4002'
-        self.complete = 'DM4006'
         self.processing_functions = {'HBB': self.run_func_hbb,'OBB': self.run_func_obb}
         self.configuration_frame()
         self.layout_camframe()
-        self.dual_submit()
         self.table = CFG_Table(self.frame_table)
         self.is_connected,_ = self.check_connect_database()
-        self.host = "192.168.0.10"
-        self.port = 8501
-        self.connected = False
-        self.check_connection()
-        self.request_pylon.StartGrabbingInit()
-        self.writedata(self.socket,self.ready,1)
-        self.counter = 0
+        # try: 
+        #     self.clone_device()
+        # except: 
+        #     pass
 
     def check_connection(self):
-        if not self.connected:
-            if super().socket_connect(self.host, self.port):
-                self.connected = True
+        connected = False
+        if not connected:
+            if super().socket_connect(self.socket,PLC_CONNECTION['HOST'], PLC_CONNECTION['PORT']):
+                connected = True
                 print('Connected to PLC')
             else:
                 print("Kết nối thất bại, sẽ thử lại...")
                 self.tab.after(2000, self.check_connection)
 
+    def clone_device(self):
+        self.check_connection()
+        self.request_pylon.StartGrabbingInit()
+        self.writedata(self.socket,ALREADY,1)
+        self.dual_Thread()
+
     def closed_device(self): 
-        # self.request_mvs.close_device()
         self.request_pylon.Close_device()
 
     def read_plc_keyence(self, data):
@@ -141,8 +139,10 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def load_data_model(self):
         return super().load_data_model()
     
-    def load_parameters_model(self, model1, load_path_weight, load_item_code, load_confidence_all_scale, records,load_dataset_format,size_model,Frame_2):
-        return super().load_parameters_model(model1, load_path_weight, load_item_code, load_confidence_all_scale, records,load_dataset_format,size_model,Frame_2)
+    def load_parameters_model(self, model1, load_path_weight, load_item_code, 
+        load_confidence_all_scale, records,load_dataset_format,size_model,Frame_2):
+        return super().load_parameters_model(model1, load_path_weight, load_item_code, 
+        load_confidence_all_scale, records,load_dataset_format,size_model,Frame_2)
     
     def change_model(self, Frame_2):
         return super().change_model(Frame_2)
@@ -171,8 +171,10 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def detect_auto(self, camera_frame):
         return super().detect_auto(camera_frame) 
     
-    def logging(self, folder_ok, folder_ng, logging_ok_checkbox_var, logging_ng_checkbox_var, camera_frame, percent_entry, logging_frame):
-        return super().logging(folder_ok, folder_ng, logging_ok_checkbox_var, logging_ng_checkbox_var, camera_frame, percent_entry, logging_frame)
+    def logging(self, folder_ok, folder_ng, logging_ok_checkbox_var, 
+        logging_ng_checkbox_var, camera_frame, percent_entry, logging_frame):
+        return super().logging(folder_ok, folder_ng, logging_ok_checkbox_var,
+        logging_ng_checkbox_var, camera_frame, percent_entry, logging_frame)
     
     def toggle_state_layout_model(self):
         return super().toggle_state_layout_model()
@@ -198,118 +200,59 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
     def load_first_img(self):
         return super().load_first_img()
     
-    def read_plc_value_from_file(self):
-        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'r') as file:
-            content = file.read()
-            parts = content.split('=')
-            if len(parts) == 2:
-                plc_value = parts[1].strip()
-                return int(plc_value)
-            else:
-                raise ValueError("File format is incorrect. Expected 'read_plc = <value>' format.")
-            
-    def write_plc_value_to_file(self):
-        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'w') as file:
-            file.write(f"read_plc = 0\n")
-        
-    def write_plc_value_to_file_btn(self):
-        with open(r"C:\Users\CCSX009\Documents\ultralytics-main\var_plc.txt", 'w') as file:
-            file.write(f"read_plc = 1\n")
-
+    def torch_load_nodemap(self, source=None, task=None, device=None):
+        return super().torch_load_nodemap(source, task, device)
+    
     def on_option_change(self,event,Frame_2):
         selected_format = self.datasets_format_model.get()
         self.process_image_func = self.processing_functions.get(selected_format, None)
         self.datasets_format_model_confirm(Frame_2)
         super().process_func_local(selected_format)
-        
-    def export_image_request_mvs(self):
-        # self.request_mvs.put_imgs_buff(self.task)
-        self.img_buffer.append(self.task.get())
-
-    def push_imgs_ppl(self):
-        self.request_pylon.TriggerOnce(self.task,self.trigger,self.busy_c1)
-        self.img_buffer.append(self.task.get())
 
     def funcloop(self):
-        value_plc = self.read_plc_value_from_file()
-        if value_plc==1:
+        if keyboard.is_pressed('shift+a'):
             self.callback_fh()
-            self.write_plc_value_to_file()
         self.img_frame.after(TIME_LOOP, self.funcloop)
 
-    def manual_excute_mvs(self):
-        value_plc = self.read_plc_value_from_file()
-        if value_plc==1:
-            self.executor.submit(self.export_image_request_mvs)
-            self.write_plc_value_to_file()
-
-    def manual_excute_pylon(self):
-        value_plc = self.read_plc_value_from_file()
-        if value_plc==1:
-            self.executor.submit(self.push_imgs_ppl)
-            self.write_plc_value_to_file()
-
     def dual_submit(self):
-        self.executor.submit(self.manual_excute_mvs)
-        self.executor.submit(self.callback)
-        self.img_frame.after(TIME_LOOP, self.dual_submit)
-
-    def auto_excute(self):
-        try: 
-            if self.readdata(self.socket,self.trigger) == 1:
-                self.executor.submit(self.push_imgs_ppl)
+        try:
+            if self.readdata(self.socket,TRIGGER) == 1 or keyboard.is_pressed('shift+a'):
+                self.executor.submit(self.request_pylon.TriggerOnce,self.task,TRIGGER,BUSY,self.socket)
                 self.executor.submit(self.callback)
         except: 
-            self.writedata(self.socket,self.ready,0)
-        self.img_frame.after(TIME_LOOP, self.auto_excute)
+            self.writedata(self.socket,ALREADY, 0)
+        self.img_frame.after(TIME_LOOP, self.dual_submit)
 
-    def dual_process(self):
+    def dual_Thread(self):
         try: 
-            if self.readdata(self.socket, self.trigger) == 1:
-                threading.Thread(target=self.push_imgs_ppl).start()
+            if self.readdata(self.socket,TRIGGER) == 1 or keyboard.is_pressed('shift+a'):
+                threading.Thread(target=self.request_pylon.TriggerOnce(self.task,TRIGGER,BUSY,self.socket)).start()
                 threading.Thread(target=self.callback).start()
         except: 
-            self.writedata(self.socket, self.ready, 0)
-        self.img_frame.after(TIME_LOOP, self.auto_excute)
-
-    def write_plc_keyence_pylon(self,register, data, soc):
-        a = 'WR '
-        b = ' '
-        c = '\x0D'
-        d = a+ register + b + str(data) + c
-        datasend  = d.encode("UTF-8")
-        soc.sendall(datasend)
-        datares = soc.recv(1024)
-
-    def write_plc_pylon(self,plc_name,register,data,soc):
-        if plc_name == 'k':
-            self.write_plc_keyence_pylon(f'DM{register}',data,soc)
-        else:
-            pass
+            self.writedata(self.socket,ALREADY, 0)
+        self.img_frame.after(TIME_LOOP, self.dual_Thread)
 
     def callback(self):
         width = 800
         height = 800
-        t1 = time.time()
-        if self.img_buffer == []: 
+        if not self.task.empty(): 
             pass
-        image_result, results_detect, list_label_ng,valid = self.process_image_func(self.img_buffer[0], width, height) 
+        image_result, results_detect, list_label_ng,valid,time_processing= self.process_image_func(self.task.get(), width, height) 
         self.result_detection.config(text=results_detect, fg='green' if results_detect == 'OK' else 'red')
         list_label_ng = ','.join(list_label_ng)
-        img_pil = Image.fromarray(image_result)
-        photo = ImageTk.PhotoImage(img_pil)
-        canvas = tk.Canvas(self.img_frame, width=width, height=height)
-        canvas.grid(row=2, column=0, padx=10, pady=10, sticky='ew')
-        canvas.create_image(0, 0, anchor=tk.NW, image=photo)
-        canvas.image = photo
-        t2 = time.time()-t1
-        time_processing = f'{str(int(t2*1000))}ms'
+        self.imgs_gui(image_result)
         self.time_processing_output.config(text=f'{time_processing}')
-        canvas.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
-        canvas.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
-        canvas.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
+        self.canvas_i.create_text(10, 10, anchor=tk.NW, text=f'Time: {time_processing}', fill='black', font=('Segoe UI', 20))
+        self.canvas_i.create_text(10, 40, anchor=tk.NW, text=f'Result: {results_detect}', fill='green' if results_detect == 'OK' else 'red', font=('Segoe UI', 20))
+        self.canvas_i.create_text(10, 70, anchor=tk.NW, text=f'NG: {list_label_ng}', fill='red', font=('Segoe UI', 20))
         self.table(valid)
-        self.img_buffer = []
+
+    def imgs_gui(self,image_result):
+        image_result = cv2.cvtColor(image_result, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(image_result, mode="RGB")
+        photo = ImageTk.PhotoImage(img_pil)
+        self.canvas_i.create_image(0, 0, anchor=tk.NW, image=photo)
+        self.canvas_i.image = photo
 
     def callback_fh(self):
         width = 800
@@ -362,6 +305,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.img_frame = ttk.LabelFrame(frame, text=f"Camera", width=800, height=800)
         self.img_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        self.canvas_i = tk.Canvas(self.img_frame, width=800, height=800)
+        self.canvas_i.grid(row=2, column=0, padx=10, pady=10, sticky='ew')
         time_frame = ttk.LabelFrame(frame, text=f"Time Processing Camera", width=300, height=100)
         time_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.time_processing_output = tk.Label(time_frame, text='0 ms', fg='black', font=('Segoe UI', 30), width=10, height=1, anchor='center')
@@ -385,8 +330,8 @@ class Model_Camera_1(Base,MySQL_Connection,PLC_Connection):
         frame.grid_rowconfigure(1, weight=1)
 
     def configuration_frame(self):
-        records, load_path_weight, load_item_code, load_confidence_all_scale,load_dataset_format,size_model = self.load_data_model()
-        self.model = YOLO(load_path_weight, task='detect').to(device=self.device)
+        records,load_path_weight,load_item_code,load_confidence_all_scale,load_dataset_format,size_model = self.load_data_model()
+        self.model = self.torch_load_nodemap(source=load_path_weight,task='detect',device=self.device)
         self.load_first_img()
         configuration_frame_tab = ttk.Frame(self.settings_notebook)
         self.settings_notebook.add(configuration_frame_tab, text="Camera 1")
