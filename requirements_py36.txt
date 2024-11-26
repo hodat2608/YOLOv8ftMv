@@ -2,7 +2,7 @@ python -m pip install --upgrade pip
 pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 pip install opencv-python==3.4.13.47
 https://9to5answer.com/error-could-not-build-wheels-for-opencv-python-which-use-pep-517-and-cannot-be-installed-directly
-
+https://github.com/heshameraqi/labelImg_OBB
 
 ----------------------------------
 absl-py==1.4.0

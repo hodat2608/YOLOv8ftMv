@@ -1,20 +1,24 @@
 import argparse
 import numpy as np
 import torch
-import cv2,os,shutil
+import cv2, os, shutil
 import tkinter as tk
 from tkinter import ttk
-from base.extention import *
+from base.ultilss.extention import *
 import torch
 import cv2
 import numpy as np
+
 # import tensorrt as trt
 import random
 import ctypes
+
 # import pycuda.driver as cuda
 import time
 import pandas as pd
+
 # import pycuda.autoinit
+
 
 class CFG_Table(tk.Tk):
     def __init__(self, frame_n):
@@ -27,24 +31,37 @@ class CFG_Table(tk.Tk):
         style.configure("Treeview.Row", background="#f2f2f2", foreground="black")
         style.map("Treeview", background=[("selected", "#ececec")])
         style.configure("ng_row", foreground="red")
-        self.tree = ttk.Treeview(frame_n, columns=("No.", "Default_X", "Default_Y", "Result_X", "Result_Y", 'Angle', "Status"), show="headings", height=5)
+        self.tree = ttk.Treeview(
+            frame_n,
+            columns=(
+                "No.",
+                "Default_X",
+                "Default_Y",
+                "Result_X",
+                "Result_Y",
+                "Angle",
+                "Status",
+            ),
+            show="headings",
+            height=5,
+        )
         self.tree.heading("No.", text="No.", anchor="center")
-        self.tree.heading("Default_X", text="Default_X", anchor="center") 
-        self.tree.heading("Default_Y", text="Default_Y", anchor="center") 
-        self.tree.heading("Result_X", text="Result_X", anchor="center")  
-        self.tree.heading("Result_Y", text="Result_Y", anchor="center") 
+        self.tree.heading("Default_X", text="Default_X", anchor="center")
+        self.tree.heading("Default_Y", text="Default_Y", anchor="center")
+        self.tree.heading("Result_X", text="Result_X", anchor="center")
+        self.tree.heading("Result_Y", text="Result_Y", anchor="center")
         self.tree.heading("Angle", text="Angle", anchor="center")
         self.tree.heading("Status", text="Status", anchor="center")
         self.tree.column("No.", width=50, anchor="center")
-        self.tree.column("Default_X", width=170, anchor="center")  
-        self.tree.column("Default_Y", width=170, anchor="center") 
-        self.tree.column("Result_X", width=170, anchor="center")  
-        self.tree.column("Result_Y", width=170, anchor="center")  
+        self.tree.column("Default_X", width=170, anchor="center")
+        self.tree.column("Default_Y", width=170, anchor="center")
+        self.tree.column("Result_X", width=170, anchor="center")
+        self.tree.column("Result_Y", width=170, anchor="center")
         self.tree.column("Angle", width=100, anchor="center")
         self.tree.column("Status", width=80, anchor="center")
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def __call__(self,data):
+    def __call__(self, data):
         if data:
             for row in self.tree.get_children():
                 self.tree.delete(row)
@@ -54,40 +71,54 @@ class CFG_Table(tk.Tk):
             Default_Y = f"{round(row[4],1)}"
             Detect_X = f"{round(row[1],1)}"
             Detect_Y = f"{round(row[2],1)}"
-            Angle = f'{row[5]}°'
+            Angle = f"{row[5]}°"
             State = row[6]
-            if State == 'NG':
-                self.tree.insert("", "end", values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State), tags=('ng_row',))
+            if State == "NG":
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State),
+                    tags=("ng_row",),
+                )
             else:
-                self.tree.insert("", "end", values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State))
-        self.tree.tag_configure('ng_row', foreground="red")
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State),
+                )
+        self.tree.tag_configure("ng_row", foreground="red")
 
-class setupTools():
+
+class setupTools:
 
     @staticmethod
     def str2cache(v):
         if isinstance(v, bool):
             return v
-        if v.lower() in ('true', 'ram', '1'):
+        if v.lower() in ("true", "ram", "1"):
             return True
-        elif v.lower() in ('false', 'disk i/o', '0'):
+        elif v.lower() in ("false", "disk i/o", "0"):
             return False
-        elif v.lower() == 'disk':
-            return 'disk'
+        elif v.lower() == "disk":
+            return "disk"
         else:
-            raise argparse.ArgumentTypeError('Expected True, "disk", or False for --cache')
+            raise argparse.ArgumentTypeError(
+                'Expected True, "disk", or False for --cache'
+            )
+
     @staticmethod
     def cache_option(value):
-        if value == 'RAM':
+        if value == "RAM":
             return True
-        elif value == 'Disk I/O':
+        elif value == "Disk I/O":
             return False
-        elif value == 'HDD':
-            return 'disk'
+        elif value == "HDD":
+            return "disk"
         else:
-            raise ValueError('Invalid cache option.')
-    @staticmethod    
-    def xywhr2xyxyxyxy_original_ops(self,class_id,x,img_width,img_height):
+            raise ValueError("Invalid cache option.")
+
+    @staticmethod
+    def xywhr2xyxyxyxy_original_ops(self, class_id, x, img_width, img_height):
         """
         Convert batched Oriented Bounding Boxes (OBB) from [xywh, rotation] to [xy1, xy2, xy3, xy4]. Rotation values should
         be in degrees from 0 to 90.
@@ -119,27 +150,27 @@ class setupTools():
         corners = torch.stack([pt1, pt2, pt3, pt4], dim=-2)
         corners_normalized = corners.clone()
         corners_normalized[..., 0] = corners[..., 0] / img_width
-        corners_normalized[..., 1] = corners[..., 1] / img_height 
+        corners_normalized[..., 1] = corners[..., 1] / img_height
 
         return [int(class_id)] + corners_normalized.view(-1).tolist()
-    
+
     @staticmethod
-    def get_params_xywhr2xyxyxyxy_original_ops(des_path,progress_label):
+    def get_params_xywhr2xyxyxyxy_original_ops(des_path, progress_label):
         input_folder = des_path
-        os.makedirs(os.path.join(input_folder,'instance'),exist_ok=True)
-        output_folder = (os.path.join(input_folder,'instance'))
-        total_fl = len(des_path) 
-        for index,txt_file in enumerate(os.listdir(input_folder)):
-            if txt_file.endswith('.txt'):
-                if txt_file == 'classes.txt':
+        os.makedirs(os.path.join(input_folder, "instance"), exist_ok=True)
+        output_folder = os.path.join(input_folder, "instance")
+        total_fl = len(des_path)
+        for index, txt_file in enumerate(os.listdir(input_folder)):
+            if txt_file.endswith(".txt"):
+                if txt_file == "classes.txt":
                     continue
                 input_path = os.path.join(input_folder, txt_file)
-                im = cv2.imread(input_path[:-4]+'.jpg')
+                im = cv2.imread(input_path[:-4] + ".jpg")
                 im_height, im_width, _ = im.shape
                 output_path = os.path.join(output_folder, txt_file)
-                with open(input_path, 'r') as file:
+                with open(input_path, "r") as file:
                     lines = file.readlines()
-                with open(output_path, 'w') as out_file:
+                with open(output_path, "w") as out_file:
                     for line in lines:
                         line = line.strip()
                         if "YOLO_OBB" in line:
@@ -148,26 +179,36 @@ class setupTools():
                         class_id = params[0]
                         bbox_list = params[1:]
                         bbox_tensor = torch.tensor(bbox_list, dtype=torch.float32)
-                        bbox_tensor[-1] = torch.abs(bbox_tensor[-1]) if torch.sign(bbox_tensor[-1])==-1 else 180-bbox_tensor[-1]
+                        bbox_tensor[-1] = (
+                            torch.abs(bbox_tensor[-1])
+                            if torch.sign(bbox_tensor[-1]) == -1
+                            else 180 - bbox_tensor[-1]
+                        )
                         bbox_tensor_2d = bbox_tensor.unsqueeze(0)
-                        converted_label = setupTools.xywhr2xyxyxyxy_original_ops(class_id,bbox_tensor_2d,im_width,im_height)
-                        out_file.write(" ".join(map(str, converted_label)) + '\n')
+                        converted_label = setupTools.xywhr2xyxyxyxy_original_ops(
+                            class_id, bbox_tensor_2d, im_width, im_height
+                        )
+                        out_file.write(" ".join(map(str, converted_label)) + "\n")
                 progress_retail = (index + 1) / total_fl * 100
-                progress_label.config(text=f"Converting YOLO OBB Dataset Format to DOTA Format: {progress_retail:.2f}%")
+                progress_label.config(
+                    text=f"Converting YOLO OBB Dataset Format to DOTA Format: {progress_retail:.2f}%"
+                )
                 progress_label.update_idletasks()
                 os.replace(output_path, input_path)
         shutil.rmtree(output_folder)
 
-    def xyxyxyxy_to_xywhr_low_tolerance(self,class_id,x1, y1, x2, y2, x3, y3, x4, y4, img_width, img_height):
-        '''
+    def xyxyxyxy_to_xywhr_low_tolerance(
+        self, class_id, x1, y1, x2, y2, x3, y3, x4, y4, img_width, img_height
+    ):
+        """
         - dung sai góc alpha giữa 2 lần convert thấp (~ 0.07 độ)
         - tọa độ tâm không đổi
         - tuy nhiên kích thước width & height sẽ có sự chênh lệch nhỏ
-        '''
+        """
         x_center_norm = (x1 + x2 + x3 + x4) / 4
         y_center_norm = (y1 + y2 + y3 + y4) / 4
-        width_norm = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-        height_norm = np.sqrt((x4 - x1)**2 + (y4 - y1)**2)
+        width_norm = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        height_norm = np.sqrt((x4 - x1) ** 2 + (y4 - y1) ** 2)
         angle_rad = np.arctan2(y2 - y1, x2 - x1)
         angle_deg = -(np.degrees(angle_rad))
         x_center = x_center_norm * img_width
@@ -176,51 +217,81 @@ class setupTools():
         height = height_norm * img_width
         return class_id, x_center, y_center, width, height, angle_deg
 
-    def xyxyxyxy_to_xywhr_high_tolerance(self,class_id, x1, y1, x2, y2, x3, y3, x4, y4, img_width, img_height):
-        '''
+    def xyxyxyxy_to_xywhr_high_tolerance(
+        self, class_id, x1, y1, x2, y2, x3, y3, x4, y4, img_width, img_height
+    ):
+        """
         - dung sai góc alpha giữa 2 lần convert cao (~ 0.7 độ)
         - tọa độ tâm không đổi
         - tuy nhiên kích thước width & height không có sự chênh lệch
-        '''
-        points = np.array([
-            [x1 * img_width, y1 * img_height],
-            [x2 * img_width, y2 * img_height],
-            [x3 * img_width, y3 * img_height],
-            [x4 * img_width, y4 * img_height]
-        ])
+        """
+        points = np.array(
+            [
+                [x1 * img_width, y1 * img_height],
+                [x2 * img_width, y2 * img_height],
+                [x3 * img_width, y3 * img_height],
+                [x4 * img_width, y4 * img_height],
+            ]
+        )
         center = points.mean(axis=0)
         width = np.linalg.norm(points[1] - points[0])
-        height = np.linalg.norm(points[3] - points[0]) 
-        angle_deg = (np.degrees(np.arctan2(points[1][1] - points[0][1], points[1][0] - points[0][0])) % 180)
-        return class_id, center[0],center[1], width, height, angle_deg
-        
-    def xyxyxyxy2xywhr_direct(self,des_path,progress_label):
+        height = np.linalg.norm(points[3] - points[0])
+        angle_deg = (
+            np.degrees(
+                np.arctan2(points[1][1] - points[0][1], points[1][0] - points[0][0])
+            )
+            % 180
+        )
+        return class_id, center[0], center[1], width, height, angle_deg
+
+    def xyxyxyxy2xywhr_direct(self, des_path, progress_label):
         input_folder = des_path
-        os.makedirs(os.path.join(input_folder,'instance'),exist_ok=True)
-        output_folder = (os.path.join(input_folder,'instance'))
-        total_fl = len(des_path) 
-        for index,txt_file in enumerate(os.listdir(input_folder)):
-            if txt_file.endswith('.txt'):
-                if txt_file == 'classes.txt':
+        os.makedirs(os.path.join(input_folder, "instance"), exist_ok=True)
+        output_folder = os.path.join(input_folder, "instance")
+        total_fl = len(des_path)
+        for index, txt_file in enumerate(os.listdir(input_folder)):
+            if txt_file.endswith(".txt"):
+                if txt_file == "classes.txt":
                     continue
                 input_path = os.path.join(input_folder, txt_file)
                 im_height, im_width, _ = im.shape
-                im = cv2.imread(input_path[:-4]+'.jpg')
+                im = cv2.imread(input_path[:-4] + ".jpg")
                 output_path = os.path.join(output_folder, txt_file)
-                with open(input_path, 'r') as file:
+                with open(input_path, "r") as file:
                     lines = file.readlines()
-                with open(output_path, 'w') as out_file:
-                    out_file.write('YOLO_OBB\n')
+                with open(output_path, "w") as out_file:
+                    out_file.write("YOLO_OBB\n")
                     for line in lines:
                         line = line.strip()
                         params = list(map(float, line.split()))
-                        class_id,x1, y1, x2, y2, x3, y3, x4, y4 = params
-                        class_id, x_center, y_center, width, height, angle_deg = self.xyxyxyxy_to_xywhr_low_tolerance(class_id,x1, y1, x2, y2, x3, y3, x4, y4,im_height,im_width)
-                        formatted_values = ["{:.6f}".format(value) for value in [x_center, y_center, width, height, angle_deg]]
-                        output_line = "{} {}\n".format(str(int(class_id)), ' '.join(formatted_values))
+                        class_id, x1, y1, x2, y2, x3, y3, x4, y4 = params
+                        class_id, x_center, y_center, width, height, angle_deg = (
+                            self.xyxyxyxy_to_xywhr_low_tolerance(
+                                class_id,
+                                x1,
+                                y1,
+                                x2,
+                                y2,
+                                x3,
+                                y3,
+                                x4,
+                                y4,
+                                im_height,
+                                im_width,
+                            )
+                        )
+                        formatted_values = [
+                            "{:.6f}".format(value)
+                            for value in [x_center, y_center, width, height, angle_deg]
+                        ]
+                        output_line = "{} {}\n".format(
+                            str(int(class_id)), " ".join(formatted_values)
+                        )
                         out_file.write(output_line)
                 progress_retail = (index + 1) / total_fl * 100
-                progress_label.config(text=f"Converting DOTA Format Format to YOLO 0BB Format: {progress_retail:.2f}%")
+                progress_label.config(
+                    text=f"Converting DOTA Format Format to YOLO 0BB Format: {progress_retail:.2f}%"
+                )
                 progress_label.update_idletasks()
                 os.replace(output_path, input_path)
         shutil.rmtree(output_folder)
@@ -242,7 +313,7 @@ class setupTools():
             y[:, 3] = x[:, 1] + x[:, 3] / 2
             y /= r_h
         return y
-    
+
     def bbox_iou_tensort(self, box1, box2, x1y1x2y2=True):
         if not x1y1x2y2:
             # Transform from center and width to exact coordinates
@@ -259,30 +330,38 @@ class setupTools():
         inter_rect_y1 = np.maximum(b1_y1, b2_y1)
         inter_rect_x2 = np.minimum(b1_x2, b2_x2)
         inter_rect_y2 = np.minimum(b1_y2, b2_y2)
-        inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * \
-                     np.clip(inter_rect_y2 - inter_rect_y1 + 1, 0, None)
+        inter_area = np.clip(inter_rect_x2 - inter_rect_x1 + 1, 0, None) * np.clip(
+            inter_rect_y2 - inter_rect_y1 + 1, 0, None
+        )
         b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
         b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
         iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
         return iou
 
-    @staticmethod
-    def tracking_id(a,obj_x,obj_y):
-        for id,(x,y) in a.items():
-            if (x -TRACK_ID<=obj_x<=x+TRACK_ID) and (y-TRACK_ID<=obj_y<=y+TRACK_ID):
-                return id,obj_x,obj_y,x,y
-            
-    @staticmethod     
-    def func_localtion(id,obj_x,obj_y,x,y):
-        if obj_x<x-CAL_COOR or obj_x>x+CAL_COOR or obj_y<y-CAL_COOR or obj_y>y+CAL_COOR:
-            return id,obj_x,obj_y,x,y,'NG',False
-        else :
-            return id,obj_x,obj_y,x,y,'OK',True
-        
-    @staticmethod   
-    def track_conn():
+    # @staticmethod
+    def tracking_id(self, a, obj_x, obj_y):
+        for id, (x, y) in a.items():
+            if (x - TRACK_ID <= obj_x <= x + TRACK_ID) and (
+                y - TRACK_ID <= obj_y <= y + TRACK_ID
+            ):
+                return id, obj_x, obj_y, x, y
+
+    # @staticmethod
+    def func_localtion(self, id, obj_x, obj_y, x, y):
+        if (
+            obj_x < x - CAL_COOR
+            or obj_x > x + CAL_COOR
+            or obj_y < y - CAL_COOR
+            or obj_y > y + CAL_COOR
+        ):
+            return id, obj_x, obj_y, x, y, "NG", False
+        else:
+            return id, obj_x, obj_y, x, y, "OK", True
+
+    # @staticmethod
+    def track_conn(self):
         a = {}
-        for line in DATA_C.strip().split('\n'):
+        for line in DATA_C.strip().split("\n"):
             values = line.split()
             id = int(values[0])
             x_c = float(values[1])
@@ -290,10 +369,10 @@ class setupTools():
             a[id] = [x_c, y_c]
         return a
 
+
 """
 TensorRT
 """
-
 
 
 # class YoloV5TRT():
@@ -304,7 +383,7 @@ TensorRT
 #     cuda_outputs = []
 #     bindings = []
 #     def __init__(self, library, engine, conf,categories):
-#         self.CONF_THRESH = conf 
+#         self.CONF_THRESH = conf
 #         self.IOU_THRESHOLD = 0.4
 #         self.LEN_ALL_RESULT = 38001
 #         self.LEN_ONE_RESULT = 38
@@ -314,14 +393,14 @@ TensorRT
 #         self.stream = cuda.Stream()
 
 #         TRT_LOGGER = trt.Logger()
-        
+
 #         ctypes.CDLL(library)
-        
+
 #         with open(engine, 'rb') as f:
 #             serialized_engine = f.read()
 
 #         runtime = trt.Runtime(TRT_LOGGER)
-        
+
 #         self.engine = runtime.deserialize_cuda_engine(serialized_engine)
 #         self.batch_size = self.engine.max_batch_size
 #         self.context = self.engine.create_execution_context()
@@ -372,17 +451,17 @@ TensorRT
 #         self.cfx.push()
 #         input_image, image_raw, origin_h, origin_w = self.PreProcessImg(img)
 #         np.copyto(host_inputs[0], input_image.ravel())
-        
+
 #         # self.context = self.engine.create_execution_context()
 #         cuda.memcpy_htod_async(cuda_inputs[0], host_inputs[0], self.stream)
-        
+
 #         t1 = time.time()
 #         self.context.execute_async(self.batch_size, bindings, stream_handle=self.stream.handle)
 #         cuda.memcpy_dtoh_async(host_outputs[0], cuda_outputs[0], self.stream)
 #         self.stream.synchronize()
 #         t2 = time.time()
 #         output = host_outputs[0]
-                
+
 #         for i in range(self.batch_size):
 #             result_boxes, result_scores, result_classid = self.PostProcess(output[i * self.LEN_ALL_RESULT: (i + 1) * self.LEN_ALL_RESULT], origin_h, origin_w)
 #         self.cfx.pop()
@@ -392,7 +471,7 @@ TensorRT
 #             det = dict()
 #             det["class"] = self.categories[int(result_classid[j])]
 #             det["conf"] = result_scores[j]
-#             det["box"] = box 
+#             det["box"] = box
 #             det_res.append(det)
 #             # self.PlotBbox(box, img, label="{}:{:.2f}".format(self.categories[int(result_classid[j])], result_scores[j]),)
 #         return self.convert_preds(det_res), t2-t1
@@ -409,7 +488,7 @@ TensorRT
 #         for dic in preds :
 #             values = list(dic.values())
 #             values[2] = list(values[2])
-            
+
 #             arr.append([values[2][0],values[2][1],values[2][2],values[2][3],\
 #                     values[1],self.categories.index(values[0]),values[0]])
 
@@ -426,7 +505,7 @@ TensorRT
 #         result_scores = boxes[:, 4] if len(boxes) else np.array([])
 #         result_classid = boxes[:, 5] if len(boxes) else np.array([])
 #         return result_boxes, result_scores, result_classid
-    
+
 #     def NonMaxSuppression(self, prediction, origin_h, origin_w, conf_thres=0.5, nms_thres=0.4):
 #         boxes = prediction[prediction[:, 4] >= conf_thres]
 #         boxes[:, :4] = self.xywh2xyxy(origin_h, origin_w, boxes[:, :4])
@@ -446,7 +525,7 @@ TensorRT
 #             boxes = boxes[~invalid]
 #         boxes = np.stack(keep_boxes, 0) if len(keep_boxes) else np.array([])
 #         return boxes
-    
+
 #     def xywh2xyxy(self, origin_h, origin_w, x):
 #         y = np.zeros_like(x)
 #         r_w = self.input_w / origin_w
@@ -464,7 +543,7 @@ TensorRT
 #             y[:, 3] = x[:, 1] + x[:, 3] / 2
 #             y /= r_h
 #         return y
-    
+
 #     def bbox_iou(self, box1, box2, x1y1x2y2=True):
 #         if not x1y1x2y2:
 #             # Transform from center and width to exact coordinates
@@ -489,7 +568,7 @@ TensorRT
 #         iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
 #         return iou
-    
+
 #     def PlotBbox(self, x, img, color=None, label=None, line_thickness=None):
 #         tl = (line_thickness or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1)  # line/font thickness
 #         color = color or [random.randint(0, 255) for _ in range(3)]
@@ -530,7 +609,7 @@ TensorRT
 #         mask = np.ones_like(gray_image) * 255
 #         mask = cv2.bitwise_and(mask, gray_image, mask=roi) + cv2.bitwise_and(mask, mask, mask=~roi)
 #         average_light = mask[np.where(mask<255)]
-        
+
 #         average_light_value = gray_image.mean()
 #         # cv2.waitKey(0)
 #         return average_light_value
@@ -556,14 +635,14 @@ TensorRT
 #         # 1. pixel 0.015 mm
 #         a,b,r = 0,0,0
 #         try :
-            
+
 #             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 #             height,width = gray.shape
 #             # Lọc Gaussian để làm mờ hình ảnh
 #             blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 #             binary_image = ~self.convert_to_binary(blurred,170)
 
-#             detected_circles = cv2.HoughCircles(binary_image, 
+#             detected_circles = cv2.HoughCircles(binary_image,
 #                             cv2.HOUGH_GRADIENT, 0.3, 1, param1 = 1,
 #                         param2 = 50, minRadius = 300, maxRadius = 350)
 
@@ -573,30 +652,29 @@ TensorRT
 #             if detected_circles is not None:
 #                 # Convert the circle parameters a, b and r to integers.
 #                 detected_circles = np.uint16(np.around(detected_circles))
-            
+
 #                 for pt in detected_circles[0, :]:
 #                     a, b, r = pt[0], pt[1], pt[2]
-                
+
 #                     # Draw the circumference of the circle.
 #                     # cv2.circle(self.img_draw, (a, b), r, (0, 0, 255), 2)
 #                     # cv2.circle(self.img_draw, (a, b), 5, (0, 0, 255), -1)
 #                     # cv2.putText(self.img_draw,"Radius: " + str(round(r*0.015,2)) + "mm",(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
 #                     # cv2.putText(self.img_draw,"Centroid: (" + str(a) + "," +str(b)+")",(50,100),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
 #                     # Draw a small circle (of radius 1) to show the center.
-                    
+
 #                     break
-            
+
 #         except Exception as error :
 #             print("Program Error - Location Test : ",error)
-        
+
 #         return a,b,r
 
-        
 
 #     def blur(self,img,blur_amount):
 
 #         blurred_image = cv2.GaussianBlur(img, (blur_amount, blur_amount), 0)
-#         return blurred_image   
+#         return blurred_image
 
 #     def shapenessLaplacian(self,img):
 #         # pass
@@ -641,7 +719,7 @@ TensorRT
 #         return sharpness_score
 
 #     def select_ROI(self,img,radius,delta):
-        
+
 #         height,width,_ = img.shape
 #         img_crop = img.copy()
 
@@ -664,17 +742,17 @@ TensorRT
 
 #             # Draw ROI
 #             cv2.putText(self.img_draw,"ROI 1",(x1_min,y1_min-5),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-#             cv2.rectangle(self.img_draw, (x1_min,y1_min), (x1_max,y1_max), (0,255,0), 2) 
+#             cv2.rectangle(self.img_draw, (x1_min,y1_min), (x1_max,y1_max), (0,255,0), 2)
 #             cv2.putText(self.img_draw,"ROI 2",(x2_min,y2_min-5),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-#             cv2.rectangle(self.img_draw, (x2_min,y2_min), (x2_max,y2_max), (0,255,0), 2) 
+#             cv2.rectangle(self.img_draw, (x2_min,y2_min), (x2_max,y2_max), (0,255,0), 2)
 #             cv2.putText(self.img_draw,"ROI 3",(x3_min,y3_min-5),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-#             cv2.rectangle(self.img_draw, (x3_min,y3_min), (x3_max,y3_max), (0,255,0), 2) 
+#             cv2.rectangle(self.img_draw, (x3_min,y3_min), (x3_max,y3_max), (0,255,0), 2)
 #             cv2.putText(self.img_draw,"ROI 4",(x4_min,y4_min-5),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-#             cv2.rectangle(self.img_draw, (x4_min,y4_min), (x4_max,y4_max), (0,255,0), 2) 
+#             cv2.rectangle(self.img_draw, (x4_min,y4_min), (x4_max,y4_max), (0,255,0), 2)
 
 #             return img_crop_1, img_crop_2, img_crop_3, img_crop_4
 
-#         except Exception as error : 
+#         except Exception as error :
 #             print('Program Error - Crop Image:',error)
 
 #     def scan_edge_position(self,img,roi = 1):
@@ -694,16 +772,16 @@ TensorRT
 #                 for y in range(h):
 #                     if binary[y, x1] == 0: # pixel trắng
 #                         # print(f"Pixel giao nhau ở vị trí ({x1}, {y})")
-                          
-#                         edge_position1.append((x1,y))   
-                    
-#                 for y in range(h):   
+
+#                         edge_position1.append((x1,y))
+
+#                 for y in range(h):
 #                     if binary[y, x2] == 0 :
 #                         # print(f"Pixel giao nhau ở vị trí ({x2}, {y})")
-#                         edge_position2.append((x2,y)) 
+#                         edge_position2.append((x2,y))
 
-#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)  
-#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)  
+#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)
+#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)
 #             if roi == 2 :
 #             # ROI 2
 #                 y1 = h//4
@@ -712,15 +790,15 @@ TensorRT
 #                 # cv2.line(img_check,(0,h - y1),(w,h - y1),(0, 255, 0), 1)
 #                 for x in range(w-1,-1,-1):
 #                     if binary[y1, x] == 0: # pixel trắng
-#                         # print(f"Pixel giao nhau ở vị trí ({x}, {y1})")    
-#                         edge_position1.append((x,y1))      
-#                 for x in range(w-1,-1,-1):   
+#                         # print(f"Pixel giao nhau ở vị trí ({x}, {y1})")
+#                         edge_position1.append((x,y1))
+#                 for x in range(w-1,-1,-1):
 #                     if binary[y2, x] == 0 :
 #                         # print(f"Pixel giao nhau ở vị trí ({x}, {y2})")
-#                         edge_position2.append((x,y2))   
+#                         edge_position2.append((x,y2))
 
-#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)  
-#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1) 
+#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)
+#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)
 #             # ROI 3
 #             if roi == 3 :
 #                 x1 = w//4
@@ -730,13 +808,13 @@ TensorRT
 
 #                 for y in range(h-1,-1,-1):
 #                     if binary[y, x1] == 0: # pixel trắng
-#                         edge_position1.append((x1,y))   
+#                         edge_position1.append((x1,y))
 
-#                 for y in range(h-1,-1,-1):   
+#                 for y in range(h-1,-1,-1):
 #                     if binary[y, x2] == 0 :
-#                         edge_position2.append((x2,y))   
-#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)  
-#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)                        
+#                         edge_position2.append((x2,y))
+#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)
+#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)
 #             # ROI 4
 #             if roi == 4 :
 #                 y1 = h//4
@@ -745,13 +823,13 @@ TensorRT
 #                 # cv2.line(img_check,(0,h - y1),(w,h -y1),(0, 255, 0), 1)
 #                 for x in range(w):
 #                     if binary[y1, x] == 0: # pixel trắng
-#                         edge_position1.append((x,y1))           
-#                 for x in range(w):   
+#                         edge_position1.append((x,y1))
+#                 for x in range(w):
 #                     if binary[y2, x] == 0 :
-#                         edge_position2.append((x,y2))  
+#                         edge_position2.append((x,y2))
 
-#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)  
-#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)  
+#                 # cv2.circle(img_check, edge_position1[0], 2, (0, 0, 255), -1)
+#                 # cv2.circle(img_check, edge_position2[0], 2, (0, 0, 255), -1)
 
 #             return img_check,edge_position1,edge_position2
 #         except Exception as error :
@@ -824,12 +902,12 @@ TensorRT
 #                 radius_filter.append(radius42)
 
 #             # Hori = np.concatenate((img1, img2,img3,img4), axis=1)
-#             # cv2.namedWindow("Detect Cirle Image", cv2.WINDOW_NORMAL) 
+#             # cv2.namedWindow("Detect Cirle Image", cv2.WINDOW_NORMAL)
 #             # cv2.imshow("Detect Cirle Image",Hori)
 #             # cv2.waitKey(0)
 #             return centroid[0],centroid[1],radius_filter
-        
-#         except Exception as error : 
+
+#         except Exception as error :
 #             print('Program Error - Detect circle:',error)
 #             return centroid[0],centroid[1],radius_filter
 
@@ -857,10 +935,10 @@ TensorRT
 #         """
 #         MIRROR TEST
 #         1. Check location of circle (centroid and radius)
-#         2. Check brightness of image 
+#         2. Check brightness of image
 #         3. Check shapness of image
 #         """
-        
+
 #         results = True
 #         self.img = img
 #         self.img_draw = self.img.copy()
@@ -900,7 +978,7 @@ TensorRT
 #             if (x < CENTER_X_MIN or x > CENTER_X_MAX ) or (y < CENTER_Y_MIN or y > CENTER_Y_MAX) :
 #                 print('Mirror Test - Location NG - Centroid')
 #                 results = False
-            
+
 #             cv2.circle(self.img_draw, (x, y), 3, (0, 0, 255), -1)
 #             cv2.circle(self.img_draw, (x, y), int(radius), (0, 255, 0), 2)
 #             cv2.putText(self.img_draw,"Ban kinh: " + str(round(radius*PX_VALUE,2)) + "mm",(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
@@ -908,7 +986,7 @@ TensorRT
 #         else :
 #             results = False
 #             cv2.putText(self.img_draw,"No Circle",(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
-        
+
 #         img_crop_1, img_crop_2, img_crop_3, img_crop_4 = self.select_ROI(self.img,RADIUS_REF,delta)
 #         # 2. Check brightness of image
 #         # ROI 1
@@ -978,7 +1056,7 @@ TensorRT
 #         combined_image = cv2.hconcat([image1, image2])
 
 #         # Display the combined image
-#         cv2.namedWindow("Images", cv2.WINDOW_NORMAL) 
+#         cv2.namedWindow("Images", cv2.WINDOW_NORMAL)
 #         cv2.imshow('Images', combined_image)
 #         cv2.waitKey(0)
 #         cv2.destroyAllWindows()
