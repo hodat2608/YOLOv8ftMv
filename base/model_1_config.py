@@ -501,6 +501,9 @@ class Model_Camera_1(PublicClassInitialization):
         configuration_frame_tab = ttk.Frame(self.settings_notebook)
         self.settings_notebook.add(configuration_frame_tab, text="Camera 1")
 
+        configuration_frame_tab_2 = ttk.Frame(self.settings_notebook)
+        self.settings_notebook.add(configuration_frame_tab_2, text="Camera 2")
+
         canvas1 = tk.Canvas(configuration_frame_tab)
         scrollbar_y = ttk.Scrollbar(
             configuration_frame_tab, orient="vertical", command=canvas1.yview

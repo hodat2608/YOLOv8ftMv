@@ -159,9 +159,7 @@ def video(notebook, window):
 
 
 def training_data(notebook, window):
-    settings_notebook = ttk.Notebook(notebook)
-    notebook.add(settings_notebook, text="Training")
-    Training_Data(settings_notebook, window)
+    Training_Data(notebook, window)
 
 
 def confirm_exit(window):

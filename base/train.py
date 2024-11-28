@@ -20,9 +20,10 @@ from base.ultilss.constants import *
 
 
 class Training_Data(Base):
-    def __init__(self, settings_notebook, window, *args, **kwargs):
+    def __init__(self, notebook, window, *args, **kwargs):
         super(Training_Data, self).__init__(*args, **kwargs)
         super().__init__()
+        self.notebook = notebook
         torch.cuda.set_device(0)
         self.device_recognize = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
@@ -42,10 +43,9 @@ class Training_Data(Base):
         self.device_model = None
         self.source_save_result_entry = None
         self.excute_button = None
-        self.settings_notebook = settings_notebook
         self.window = window
         self.myclasses = []
-        self.layout()
+        self.layout_basic()
 
     def format_params_xywhr2xyxyxyxy(self, des_path, progress_label):
         return super().format_params_xywhr2xyxyxyxy(des_path, progress_label)
@@ -55,11 +55,14 @@ class Training_Data(Base):
             des_path, progress_label
         )
 
-    def layout(self):
+    def layout_basic(self):
 
-        canvas1 = tk.Canvas(self.settings_notebook)
+        self.basic_train_note = ttk.Notebook(self.notebook)
+        self.notebook.add(self.basic_train_note, text="Basic Training")
+
+        canvas1 = tk.Canvas(self.basic_train_note)
         scrollbar = ttk.Scrollbar(
-            self.settings_notebook, orient="vertical", command=canvas1.yview
+            self.basic_train_note, orient="vertical", command=canvas1.yview
         )
         scrollable_frame = ttk.Frame(canvas1)
 
@@ -76,8 +79,8 @@ class Training_Data(Base):
         canvas1.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        self.settings_notebook.grid_columnconfigure(0, weight=1)
-        self.settings_notebook.grid_rowconfigure(0, weight=1)
+        self.basic_train_note.grid_columnconfigure(0, weight=1)
+        self.basic_train_note.grid_rowconfigure(0, weight=1)
 
         screen_width = self.window.winfo_screenwidth()
         screen_height = self.window.winfo_screenheight()
@@ -86,13 +89,13 @@ class Training_Data(Base):
         frame_height = screen_height // 2
 
         Frame_1 = ttk.LabelFrame(
-            self.settings_notebook,
+            self.basic_train_note,
             text="Configuration",
             width=frame_width,
             height=frame_height,
         )
         Frame_2 = ttk.LabelFrame(
-            self.settings_notebook,
+            self.basic_train_note,
             text="Console",
             width=frame_width,
             height=frame_height,
@@ -873,7 +876,7 @@ class Training_Data(Base):
 
             self.execute_command(callback)
 
-    def run_command(self, command):
+    def run_command(self, command, current_time):
         process = Popen(
             command, shell=True, stdout=PIPE, stderr=STDOUT, text=True, encoding="utf-8"
         )
@@ -881,15 +884,23 @@ class Training_Data(Base):
         for line in process.stdout:
             self.console_widget.insert(tk.END, line)
             self.console_widget.see(tk.END)
-
+        time_training = f"{(time.time() - current_time) / 60:.2f} phút"
+        print("time_training:", time_training)
         process.stdout.close()
         process.wait()
 
     def execute_command(self, callback):
         command = callback
+        current_time = time.time()
         if command.startswith("pip install"):
             command = f"python -m {command}"
-        threading.Thread(target=self.run_command, args=(command,)).start()
+        threading.Thread(
+            target=self.run_command,
+            args=(
+                command,
+                current_time,
+            ),
+        ).start()
 
     def Excute(self, progress_label):
         dataset_format = self.datasets_format_model.get()

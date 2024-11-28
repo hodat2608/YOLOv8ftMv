@@ -351,7 +351,15 @@ class ProcessingModelType(LoadDatabase):
         return iou
 
     def xywhr2xyxyxyxy(
-        self, class_id, x_center, y_center, width, height, angle, im_height, im_width
+        self,
+        class_id: int = None,
+        x_center: int | float = 0,
+        y_center: int | float = 0,
+        width: int | float = 0,
+        height: int | float = 0,
+        angle: int | float = 0,
+        im_height: int = 0,
+        im_width: int = 0,
     ):
         half_width = width / 2
         half_height = height / 2
@@ -398,19 +406,19 @@ class ProcessingModelType(LoadDatabase):
                         params = list(map(float, line.split()))
                         class_id, x_center, y_center, width, height, angle = params
                         converted_label = self.xywhr2xyxyxyxy(
-                            class_id,
-                            x_center,
-                            y_center,
-                            width,
-                            height,
-                            angle,
-                            im_height,
-                            im_width,
+                            class_id=class_id,
+                            x_center=x_center,
+                            y_center=y_center,
+                            width=width,
+                            height=height,
+                            angle=angle,
+                            im_height=im_height,
+                            im_width=im_width,
                         )
                         out_file.write(" ".join(map(str, converted_label)) + "\n")
                 progress_retail = (index + 1) / total_fl * 100
                 progress_label.config(
-                    text=f"Converting YOLO OBB Dataset Format to DOTA Format: {progress_retail:.2f}%"
+                    text=f"Converting Format...{progress_retail:.2f}%"
                 )
                 progress_label.update_idletasks()
                 os.replace(output_path, input_path)
