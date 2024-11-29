@@ -18,21 +18,56 @@ import cv2
 from base.ultils import *
 from base.ultilss.constants import *
 
+class ToolTip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        if self.tip_window:
+            return
+        x, y, _cx, _cy = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 20
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(
+            tw, text=self.text, justify="left",
+            background="#ffffe0", relief="solid", borderwidth=1,
+            font=("tahoma", "8", "normal")
+        )
+        label.pack(ipadx=1)
+
+    def hide_tooltip(self, event=None):
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
 
 class Training_Data(Base):
     def __init__(self, notebook, window, *args, **kwargs):
         super(Training_Data, self).__init__(*args, **kwargs)
         super().__init__()
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview.Heading", font=("Arial", 10, "bold"), anchor="center")
+        style.configure("Treeview", rowheight=30, font=("Arial", 10), borderwidth=1)
+        style.map("Treeview", background=[("selected", "#ececec")])
+        style.configure("Treeview", background="white", foreground="black")
+        style.configure("Treeview.Row", background="#f2f2f2", foreground="black")
+        style.map("Treeview", background=[("selected", "#ececec")])
+        style.configure("ng_row", foreground="red")
         self.notebook = notebook
         torch.cuda.set_device(0)
         self.device_recognize = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+            "cuda" if torch.cuda.is_available() else "cpu")
         self.current_dir = os.getcwd()
         self.models_train = os.path.join(os.getcwd(), "base", "setup.py")
         self.models_path = os.path.join(
-            os.getcwd(), "ultralytics", "cfg", "models", "v8"
-        )
+            os.getcwd(), "ultralytics", "cfg", "models", "v8")
         self.source_FOLDER_entry = None
         self.source_FOLDER_entry_btn = None
         self.source_CLASS_entry = None
@@ -44,7 +79,6 @@ class Training_Data(Base):
         self.source_save_result_entry = None
         self.excute_button = None
         self.window = window
-        self.myclasses = []
         self.layout_basic()
 
     def format_params_xywhr2xyxyxyxy(self, des_path, progress_label):
@@ -167,9 +201,31 @@ class Training_Data(Base):
         )
 
         ###
+        source_pretrained_model = ttk.Frame(inner_frame_1)
+        source_pretrained_model.grid(
+            row=2, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+        )
+
+        ttk.Label(
+            source_pretrained_model, text="Pretrained Model:", font=("ubuntu", 12), width=15
+        ).grid(column=0, row=1, padx=10, pady=5, sticky="w")
+
+        self.source_pretrained_model_entry = ttk.Entry(source_pretrained_model, width=45)
+        self.source_pretrained_model_entry.grid(
+            row=1, column=1, padx=(0, 10), pady=3, sticky="w", ipadx=5, ipady=2
+        )
+        ToolTip(self.source_pretrained_model_entry, "Select the pretrained model dataset (*.pt), if training with the entire dataset, leave the input blank")
+        self.source_pretrained_model_btn = tk.Button(
+            source_pretrained_model, text="Browse...", command=lambda: self.browse_folder3()
+        )
+        self.source_pretrained_model_btn.grid(
+            row=1, column=2, padx=(0, 10), pady=3, sticky="w", ipadx=5, ipady=1
+        )
+
+        ###
         source_FOLDER = ttk.Frame(inner_frame_1)
         source_FOLDER.grid(
-            row=2, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=3, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -180,7 +236,7 @@ class Training_Data(Base):
         self.source_FOLDER_entry.grid(
             row=1, column=1, padx=(0, 10), pady=3, sticky="w", ipadx=5, ipady=2
         )
-
+        ToolTip(self.source_FOLDER_entry, "Select the folder containing the dataset")
         self.source_FOLDER_entry_btn = tk.Button(
             source_FOLDER, text="Browse...", command=lambda: self.browse_folder0()
         )
@@ -192,7 +248,7 @@ class Training_Data(Base):
 
         source_CLASS = ttk.Frame(inner_frame_1)
         source_CLASS.grid(
-            row=3, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=4, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -203,7 +259,7 @@ class Training_Data(Base):
         self.source_CLASS_entry.grid(
             row=1, column=1, padx=(0, 10), pady=3, sticky="w", ipadx=5, ipady=2
         )
-
+        ToolTip(self.source_CLASS_entry, "Select the classes.txt of dataset")
         self.source_CLASS_entry_button = tk.Button(
             source_CLASS, text="Browse...", command=lambda: self.browse_folder1()
         )
@@ -214,7 +270,7 @@ class Training_Data(Base):
         #####
 
         imgsz = ttk.Frame(inner_frame_1)
-        imgsz.grid(row=4, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        imgsz.grid(row=5, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         ttk.Label(imgsz, text="Image size:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
@@ -237,7 +293,7 @@ class Training_Data(Base):
         #####
 
         epochs = ttk.Frame(inner_frame_1)
-        epochs.grid(row=5, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        epochs.grid(row=6, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         ttk.Label(epochs, text="Epochs:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
@@ -261,7 +317,7 @@ class Training_Data(Base):
 
         time_frame = ttk.Frame(inner_frame_1)
         time_frame.grid(
-            row=6, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=7, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(time_frame, text="Times: ", font=("ubuntu", 12), width=15).grid(
@@ -276,7 +332,7 @@ class Training_Data(Base):
         #####
 
         patience = ttk.Frame(inner_frame_1)
-        patience.grid(row=7, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        patience.grid(row=8, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         ttk.Label(patience, text="Patience:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
@@ -299,7 +355,7 @@ class Training_Data(Base):
         #####
 
         batch = ttk.Frame(inner_frame_1)
-        batch.grid(row=8, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        batch.grid(row=9, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         ttk.Label(batch, text="Batch:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
@@ -322,7 +378,7 @@ class Training_Data(Base):
         #####
 
         device = ttk.Frame(inner_frame_1)
-        device.grid(row=9, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        device.grid(row=10, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         ttk.Label(device, text="Device:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
@@ -346,7 +402,7 @@ class Training_Data(Base):
 
         source_save_result = ttk.Frame(inner_frame_1)
         source_save_result.grid(
-            row=10, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=11, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -369,7 +425,7 @@ class Training_Data(Base):
 
         name_results = ttk.Frame(inner_frame_1)
         name_results.grid(
-            row=11, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=12, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -384,7 +440,7 @@ class Training_Data(Base):
         # Save
         save_frame = ttk.Frame(inner_frame_1)
         save_frame.grid(
-            row=12, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=13, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(save_frame, text="Save:", font=("ubuntu", 12), width=15).grid(
@@ -398,7 +454,7 @@ class Training_Data(Base):
         # cache
         cache_frame = ttk.Frame(inner_frame_1)
         cache_frame.grid(
-            row=13, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=14, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(cache_frame, text="Cache:", font=("ubuntu", 12), width=15).grid(
@@ -422,7 +478,7 @@ class Training_Data(Base):
         # Workers
         workers_frame = ttk.Frame(inner_frame_1)
         workers_frame.grid(
-            row=14, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=15, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(workers_frame, text="Workers:", font=("ubuntu", 12), width=15).grid(
@@ -445,7 +501,7 @@ class Training_Data(Base):
         # Optimizer
         optimizer_frame = ttk.Frame(inner_frame_1)
         optimizer_frame.grid(
-            row=15, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=16, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -469,7 +525,7 @@ class Training_Data(Base):
         # Pretrained
         pretrained_frame = ttk.Frame(inner_frame_1)
         pretrained_frame.grid(
-            row=16, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=17, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -483,7 +539,7 @@ class Training_Data(Base):
         # cache
         verbose_frame = ttk.Frame(inner_frame_1)
         verbose_frame.grid(
-            row=17, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=18, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(verbose_frame, text="verbose:", font=("ubuntu", 12), width=15).grid(
@@ -497,7 +553,7 @@ class Training_Data(Base):
         # cache
         deterministic_frame = ttk.Frame(inner_frame_1)
         deterministic_frame.grid(
-            row=18, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=19, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -511,7 +567,7 @@ class Training_Data(Base):
         # cache
         single_cls_frame = ttk.Frame(inner_frame_1)
         single_cls_frame.grid(
-            row=19, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=20, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -525,7 +581,7 @@ class Training_Data(Base):
         # cache
         rect_frame = ttk.Frame(inner_frame_1)
         rect_frame.grid(
-            row=20, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=21, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(rect_frame, text="rect:", font=("ubuntu", 12), width=15).grid(
@@ -540,7 +596,7 @@ class Training_Data(Base):
 
         close_mosaic = ttk.Frame(inner_frame_1)
         close_mosaic.grid(
-            row=21, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=22, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(
@@ -566,7 +622,7 @@ class Training_Data(Base):
         ###
         resume_frame = ttk.Frame(inner_frame_1)
         resume_frame.grid(
-            row=22, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=23, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(resume_frame, text="resume:", font=("ubuntu", 12), width=15).grid(
@@ -580,7 +636,7 @@ class Training_Data(Base):
         ###
         amp_frame = ttk.Frame(inner_frame_1)
         amp_frame.grid(
-            row=23, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=24, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(amp_frame, text="amp:", font=("ubuntu", 12), width=15).grid(
@@ -592,7 +648,7 @@ class Training_Data(Base):
         ###
         fraction_frame = ttk.Frame(inner_frame_1)
         fraction_frame.grid(
-            row=24, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=25, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(fraction_frame, text="fraction:", font=("ubuntu", 12), width=15).grid(
@@ -606,7 +662,7 @@ class Training_Data(Base):
         ###
         profile_frame = ttk.Frame(inner_frame_1)
         profile_frame.grid(
-            row=25, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
+            row=26, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w"
         )
 
         ttk.Label(profile_frame, text="profile:", font=("ubuntu", 12), width=15).grid(
@@ -620,7 +676,7 @@ class Training_Data(Base):
         ####
 
         excute = ttk.Frame(inner_frame_1)
-        excute.grid(row=26, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
+        excute.grid(row=27, column=0, columnspan=2, padx=(15, 30), pady=10, sticky="w")
 
         self.excute_button = tk.Button(
             excute, text="Excute", command=lambda: self.Excute(progress_label)
@@ -648,6 +704,14 @@ class Training_Data(Base):
             self.source_CLASS_entry.delete(0, tk.END)
             self.source_CLASS_entry.insert(0, file_selected)
 
+    def browse_folder3(self):
+        file_selected = filedialog.askopenfilename(
+            title="Select *.pt file", filetypes=(("pt files", "*.pt"),)
+        )
+        if file_selected:
+            self.source_pretrained_model_entry.delete(0, tk.END)
+            self.source_pretrained_model_entry.insert(0, file_selected)
+
     def browse_folder0(self):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
@@ -655,6 +719,7 @@ class Training_Data(Base):
             self.source_FOLDER_entry.insert(0, folder_selected)
 
     def run_h(self, progress_label):
+        n_class = []
         if (
             self.source_FOLDER_entry.get() == None
             or self.source_FOLDER_entry.get() == ""
@@ -714,10 +779,10 @@ class Training_Data(Base):
 
             with open(self.source_CLASS_entry.get(), "r") as line:
                 cls = line.read().split("\n")
-                for text in cls:
-                    self.myclasses.append(text)
+                for i in cls:
+                    n_class.append(i)
 
-            self.myclasses = [cls for cls in self.myclasses if cls]
+            sort_cls = [cls for cls in n_class if cls]
 
             with open(
                 os.path.join(self.models_path, "datasets.yaml"), "w", encoding="utf-8"
@@ -726,29 +791,42 @@ class Training_Data(Base):
                 f.write("\n")
                 f.write("val: " + os.path.join(os.getcwd(), "datasets/valid/images"))
                 f.write("\n")
-                f.write("nc: " + str(len(self.myclasses)))
+                f.write("nc: " + str(len(sort_cls)))
                 f.write("\n")
-                f.write("names: " + str(self.myclasses))
+                f.write("names: " + str(sort_cls))
 
             with open(
                 os.path.join(self.models_path, "yolov8.yaml"), "w", encoding="utf-8"
             ) as f:
-                f.write("nc: " + str(len(self.myclasses)) + "\n" + YOLOV8_YAML)
+                f.write("nc: " + str(len(sort_cls)) + "\n" + YOLOV8)
 
             if self.device_model.get() == "Auto":
                 device_model = self.device_recognize
             else:
                 device_model = self.device_model.get()
 
+            if (str(self.source_pretrained_model_entry.get()) == '' or 
+                str(self.source_pretrained_model_entry.get()) == None):
+                pretrained_model = None
+            else:
+                pretrained_model = str(self.source_pretrained_model_entry.get())
+
+            if (self.source_save_result_entry.get()=='' or 
+                self.source_save_result_entry.get()==None):
+                save_result = None
+            else: 
+                save_result = self.source_save_result_entry.get()
+
             callback = (
                 f"python {self.models_train} "
                 f'--config "{os.path.join(self.models_path,"yolov8.yaml")}" '
+                f'--pretrainedmodel "{pretrained_model}" '
                 f'--data "{os.path.join(self.models_path,"datasets.yaml")}" '
                 f"--epochs {str(self.epochs_model.get())} "
                 f"--imgsz {str(self.size_model.get())} "
                 f"--batch {str(self.batch_model.get())} "
                 f"--device {str(device_model)} "
-                f'--project "{None if self.source_save_result_entry.get()==''else self.source_save_result_entry.get()}" '
+                f'--project "{save_result}" '
                 f"--name {str(self.name_results_entry.get())} "
                 f"--workers {str(self.workers.get())} "
                 f"--patience {str(self.patience_model.get())} "
@@ -759,6 +837,7 @@ class Training_Data(Base):
             self.execute_command(callback)
 
     def run_o(self, progress_label):
+        n_class=[]
         if (
             self.source_FOLDER_entry.get() == None
             or self.source_FOLDER_entry.get() == ""
@@ -832,15 +911,15 @@ class Training_Data(Base):
 
             with open(self.source_CLASS_entry.get(), "r") as line:
                 cls = line.read().split("\n")
-                for text in cls:
-                    self.myclasses.append(text)
+                for i in cls:
+                    n_class.append(i)
 
-            self.myclasses = [cls for cls in self.myclasses if cls]
+            sort_cls = [cls for cls in n_class if cls]
             datasets_yaml_content = (
                 f"train: {os.path.join(os.getcwd(), 'datasets/train/images')}\n"
                 f"val: {os.path.join(os.getcwd(), 'datasets/valid/images')}\n"
-                f"nc: {len(self.myclasses)}\n"
-                f"names: {self.myclasses}\n"
+                f"nc: {len(sort_cls)}\n"
+                f"names: {sort_cls}\n"
             )
 
             with open(
@@ -851,22 +930,35 @@ class Training_Data(Base):
             with open(
                 os.path.join(self.models_path, "yolov8.yaml"), "w", encoding="utf-8"
             ) as f:
-                f.write(f"nc: {len(self.myclasses)}\n{YOLOV8_OBB_YAML}")
+                f.write(f"nc: {len(sort_cls)}\n{YOLOV8_OBB}")
 
             if self.device_model.get() == "Auto":
                 device_model = self.device_recognize
             else:
                 device_model = self.device_model.get()
 
+            if (str(self.source_pretrained_model_entry.get()) == '' or 
+                str(self.source_pretrained_model_entry.get()) == None):
+                pretrained_model = None
+            else:
+                pretrained_model = str(self.source_pretrained_model_entry.get())
+
+            if (self.source_save_result_entry.get()=='' or 
+                self.source_save_result_entry.get()==None):
+                save_result = None
+            else: 
+                save_result = self.source_save_result_entry.get()
+
             callback = (
                 f"python {self.models_train} "
                 f'--config "{os.path.join(self.models_path,"yolov8.yaml")}" '
+                f'--pretrainedmodel "{pretrained_model}" '
                 f'--data "{os.path.join(self.models_path,"datasets.yaml")}" '
                 f"--epochs {str(self.epochs_model.get())} "
                 f"--imgsz {str(self.size_model.get())} "
                 f"--batch {str(self.batch_model.get())} "
                 f"--device {str(device_model)} "
-                f'--project "{None if self.source_save_result_entry.get()==''else self.source_save_result_entry.get()}" '
+                f'--project "{save_result}" '
                 f"--name {str(self.name_results_entry.get())} "
                 f"--workers {str(self.workers.get())} "
                 f"--patience {str(self.patience_model.get())} "

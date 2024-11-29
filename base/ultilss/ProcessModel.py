@@ -121,13 +121,17 @@ class ProcessingModelType(LoadDatabase):
             _flag,
             lst_result,
             lst_check_location,
-        ) = ([], [], [], False, "ERROR", [])
+            dictionary,
+        ) = ([], [], [], False, "ERROR", [],[])
         for index, (xywhr, cls, conf) in enumerate(
             reversed(list(zip(_xywhr, _cls, _conf)))
         ):
             setting = settings_dict[results[0].names[int(cls)]]
             if setting:
                 if setting["join_detect"]:
+                    dictionary.append(
+                        (xywhr[0], xywhr[1], xywhr[2], xywhr[3], int(cls))
+                    )
                     if (
                         (
                             xywhr[2] < setting["width_min"]
@@ -187,7 +191,8 @@ class ProcessingModelType(LoadDatabase):
             self.xyxyxyxy2xywhr_indirect(
                 source, results[0], _xywhr, _cls, _conf, self.default_model_params
             )
-        show_img = np.squeeze(results[0].extract_npy(list_remove=_invalid_idex))
+        show_img = np.squeeze(results[0]._plot(_invalid_idex=_invalid_idex))
+        show_img = np.squeeze(results[0]._export(dictionary=dictionary))
         show_img = cv2.resize(show_img, (width, height), interpolation=cv2.INTER_AREA)
         output_image = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
         lst_check_location = sorted(lst_check_location, key=lambda item: item[0])

@@ -21,13 +21,19 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="training.yaml",
+        default=None,
         help="Path to the YOLO configuration file.",
+    )
+    parser.add_argument(
+        "--pretrainedmodel",
+        type=str,
+        default=None,
+        help="Path to the pretrained model file.",
     )
     parser.add_argument(
         "--data",
         type=str,
-        default="data.yaml",
+        default=None,
         help="Path to the dataset configuration file.",
     )
     parser.add_argument(
@@ -83,7 +89,11 @@ def main():
         help="optimizer",
     )
     args = parser.parse_args()
-    model = YOLO(args.config)
+    if not args.pretrainedmodel:
+        print('pretrained-model')
+        model = YOLO(args.config).load(args.pretrainedmodel)
+    else:
+        model = YOLO(args.config)
     device = (
         args.device if args.device else ("cuda" if torch.cuda.is_available() else "cpu")
     )

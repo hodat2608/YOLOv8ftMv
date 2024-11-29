@@ -333,7 +333,7 @@ class Annotator:
     #             )
 
 
-    def box_label(self, box, label="", color=(128, 128, 128), txt_color=(255, 255, 255), rotated=False, angle='', is_angle=False,):
+    def box_label(self, box, label="", color=(128, 128, 128), txt_color=(255, 255, 255), rotated=False, angle='', is_angle=False,show_label=True,):
         """
         Draws a bounding box to image with label.
 
@@ -380,23 +380,24 @@ class Annotator:
                 p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
                 cv2.rectangle(self.im, p1, p2, color, thickness=self.lw, lineType=cv2.LINE_AA)
             if label:
-                w, h = cv2.getTextSize(label, 0, fontScale=self.sf, thickness=self.tf)[0]  # text width, height
-                h += 3  # add pixels to pad text
-                outside = p1[1] >= h  # label fits outside box
-                if p1[0] > self.im.shape[1] - w:  # check if label extend beyond right side of image
-                    p1 = self.im.shape[1] - w, p1[1]
-                p2 = p1[0] + w, p1[1] - h if outside else p1[1] + h
-                cv2.rectangle(self.im, p1, p2, color, -1, cv2.LINE_AA)  # filled
-                cv2.putText(
-                    self.im,
-                    label,
-                    (p1[0], p1[1] - 2 if outside else p1[1] + h - 1),
-                    0,
-                    1.2,
-                    txt_color,
-                    thickness=1,
-                    lineType=8,
-                )
+                if show_label:
+                    w, h = cv2.getTextSize(label, 0, fontScale=self.sf, thickness=self.tf)[0]  # text width, height
+                    h += 3  # add pixels to pad text
+                    outside = p1[1] >= h  # label fits outside box
+                    if p1[0] > self.im.shape[1] - w:  # check if label extend beyond right side of image
+                        p1 = self.im.shape[1] - w, p1[1]
+                    p2 = p1[0] + w, p1[1] - h if outside else p1[1] + h
+                    cv2.rectangle(self.im, p1, p2, color, -1, cv2.LINE_AA)  # filled
+                    cv2.putText(
+                        self.im,
+                        label,
+                        (p1[0], p1[1] - 2 if outside else p1[1] + h - 1),
+                        0,
+                        1.2,
+                        txt_color,
+                        thickness=1,
+                        lineType=8,
+                    )
                 if is_angle:
                     cv2.putText(self.im, f'{str(angle)}*', (x_center - 50, y_center), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
                 
@@ -408,11 +409,13 @@ class Annotator:
             cv2.circle(im, (int(round(box[0])), int(round(box[1]))), radius=5, color=(0, 0, 255), thickness=thicknes)
             cv2.arrowedLine(im, (int(round(box[0])), int(round(box[1]))), (int(round(box[0])) - arrow_length, int(round(box[1]))), color=red, thickness=thicknes, tipLength=tipLength)
             cv2.arrowedLine(im, (int(round(box[0])), int(round(box[1]))), (int(round(box[0])), int(round(box[1])) - arrow_length), color=green, thickness=thicknes, tipLength=tipLength)
-            cv2.putText(im, f"({int(round(box[0]))}, {int(round(box[1]))})", (int(round(box[0])) + 10, int(round(box[1])) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(im, f"({int(round(box[0]))}, {int(round(box[1]))})", (int(round(box[0])) + 10, int(round(box[1])) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (70,130,180), 1, cv2.LINE_AA)
+            '''
             if prev_point is not None:
                 cv2.line(im, prev_point, current_point, (0, 0, 255), 2) 
                 print(prev_point, current_point)
             prev_point = current_point
+            '''
         return im
     
     def masks(self, masks, colors, im_gpu, alpha=0.5, retina_masks=False):

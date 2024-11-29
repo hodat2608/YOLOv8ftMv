@@ -209,7 +209,7 @@ class Results(SimpleClass):
         extract = False,
         coordinates=False,
         list_remove_pred=[],
-        list_remove=[],
+        _invalid_idex=[],
         dictionary={},
         *args, **kwargs
     ):
@@ -281,50 +281,50 @@ class Results(SimpleClass):
                 )
             idx = pred_boxes.cls if pred_boxes else range(len(pred_masks))
             annotator.masks(pred_masks.data, colors=[colors(x, True) for x in idx], im_gpu=im_gpu)
+        '''
+        #Plot Detect results
+        if pred_boxes is not None and show_boxes:
+            valid_pred_boxes = []
+            for d in reversed(pred_boxes):
+                c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
+                if c in list_remove:
+                    continue
+                valid_pred_boxes.append(d)
+            for d in valid_pred_boxes:
+                c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
+                name = ("" if id is None else f"id:{id} ") + names[c]
+                label = (f"{name} {conf:.2f}" if conf else name) if labels else None
+                box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
+                annotator.box_label(box, label, color=colors(c, True), rotated=is_obb)
 
-        # Plot Detect results
-        # if pred_boxes is not None and show_boxes:
-        #     valid_pred_boxes = []
-        #     for d in reversed(pred_boxes):
-        #         c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
-        #         if c in list_remove:
-        #             continue
-        #         valid_pred_boxes.append(d)
-        #     for d in valid_pred_boxes:
-        #         c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
-        #         name = ("" if id is None else f"id:{id} ") + names[c]
-        #         label = (f"{name} {conf:.2f}" if conf else name) if labels else None
-        #         box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
-        #         annotator.box_label(box, label, color=colors(c, True), rotated=is_obb)
-
-        # Plot Detect results
-        # if pred_boxes is not None and show_boxes:     
-        #     valid_pred_boxes = []
-        #     for index, d in enumerate(reversed(pred_boxes)):
-        #         c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
-        #         if index in list_remove:
-        #             continue
-        #         valid_pred_boxes.append(d)
-        #     for d in valid_pred_boxes:
-        #         try:
-        #             radian = d.xywhr.tolist()
-        #         except:
-        #             radian = None
-        #         if radian: 
-        #             for r in radian: 
-        #                 rotage = math.degrees(r[4])
-        #                 c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
-        #                 name = ("" if id is None else f"id:{id} ") + names[c]
-        #                 label = (f"{name} {conf:.2f}" if conf else name) if labels else None
-        #                 box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
-        #                 annotator.box_label(box, label, color=colors(c, True), rotated=is_obb,angle=round(rotage,1),is_angle=True)
-        #         else: 
-        #             c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
-        #             name = ("" if id is None else f"id:{id} ") + names[c]
-        #             label = (f"{name} {conf:.2f}" if conf else name) if labels else None
-        #             box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
-        #             annotator.box_label(box, label, color=colors(c, True), rotated=is_obb,angle='',is_angle=False)
-
+        #Plot Detect results
+        if pred_boxes is not None and show_boxes:     
+            valid_pred_boxes = []
+            for index, d in enumerate(reversed(pred_boxes)):
+                c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
+                if index in list_remove:
+                    continue
+                valid_pred_boxes.append(d)
+            for d in valid_pred_boxes:
+                try:
+                    radian = d.xywhr.tolist()
+                except:
+                    radian = None
+                if radian: 
+                    for r in radian: 
+                        rotage = math.degrees(r[4])
+                        c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
+                        name = ("" if id is None else f"id:{id} ") + names[c]
+                        label = (f"{name} {conf:.2f}" if conf else name) if labels else None
+                        box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
+                        annotator.box_label(box, label, color=colors(c, True), rotated=is_obb,angle=round(rotage,1),is_angle=True)
+                else: 
+                    c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
+                    name = ("" if id is None else f"id:{id} ") + names[c]
+                    label = (f"{name} {conf:.2f}" if conf else name) if labels else None
+                    box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
+                    annotator.box_label(box, label, color=colors(c, True), rotated=is_obb,angle='',is_angle=False)
+        '''
         # Plot Detect results
         if pred_boxes is not None and show_boxes:     
             for index, d in enumerate(reversed(pred_boxes)):     
@@ -336,12 +336,12 @@ class Results(SimpleClass):
                 name = ("" if id is None else f"id:{id} ") + names[c]
                 label = (f"{name} {conf:.2f}" if conf else name) if labels else None
                 box = d.xyxyxyxy.reshape(-1, 4, 2).squeeze() if is_obb else d.xyxy.squeeze()
-                color = self.red if index in list_remove else self.green
+                color = self.red if index in _invalid_idex else self.green
                 if radian: 
                     for r in radian:
-                        annotator.box_label(box, label, color=color, rotated=is_obb, angle=round(math.degrees(r[4]), 1), is_angle=True)
+                        annotator.box_label(box, label, color=color, rotated=is_obb, angle=round(math.degrees(r[4]), 1), is_angle=True,show_label=False)
                 else: 
-                    annotator.box_label(box, label, color=color, rotated=is_obb, angle='', is_angle=False)
+                    annotator.box_label(box, label, color=color, rotated=is_obb, angle='', is_angle=False,show_label=True)
 
         # Plot Classify results
         if pred_probs is not None and show_probs:
@@ -384,11 +384,11 @@ class Results(SimpleClass):
         self.plot(save=True, filename=filename, *args, **kwargs)
         return filename
     
-    def extract_npy(self,list_remove=[],list_remove_pred=[],*args, **kwargs):
-        self.plot(extract=True,list_remove=list_remove,list_remove_pred=list_remove_pred,*args, **kwargs)
+    def _plot(self,_invalid_idex=[],list_remove_pred=[],*args, **kwargs):
+        self.plot(extract=True,_invalid_idex=_invalid_idex,list_remove_pred=list_remove_pred,*args, **kwargs)
         return self.img_np
     
-    def render_x_y(self, dictionary={}, *args, **kwargs):
+    def _export(self, dictionary={}, *args, **kwargs):
         self.plot(coordinates=True,dictionary=dictionary, *args, **kwargs)
         return self.img_np1
 

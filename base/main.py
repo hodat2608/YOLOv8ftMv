@@ -11,7 +11,7 @@ from base.menu_cfg import *
 from base.model_1_config import *
 from base.ultilss.config import *
 
-__appname__ = "YOLOv8.0.2 by Utralytics"
+__appname__ = "YOLOv8.2.0 by Utralytics"
 
 
 class main:
