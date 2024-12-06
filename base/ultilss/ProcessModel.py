@@ -226,16 +226,18 @@ class ProcessingModelType(LoadDatabase):
         if OBJECTS_COORDINATES:
             if setting["label_name"] == ITEM[0]:
                 if xywhr[0] and xywhr[1]:
-                    id, obj_x, obj_y, x, y = self.tracking_id(
+                    c = self._get_lc_object(
                         self.tuple, xywhr[0], xywhr[1]
                     )
-                    id, obj_x, obj_y, x, y, conn, val = self.func_localtion(
-                        id, obj_x, obj_y, x, y
+                    d = self._get_lc_state(
+                        c[0],c[1][0],c[1][1],c[2][0],c[2][1]
                     )
                     lst_check_location.append(
-                        (id, obj_x, obj_y, x, y, round(math.degrees(xywhr[4]), 1), conn)
+                        (d[0],d[1][0],d[1][1],d[2][0],d[2][1], 
+                        round(math.degrees(xywhr[4]),1),
+                        'OK' if d[3][0] else 'NG')
                     )
-                    if not val:
+                    if not d[3][0]:
                         _flag = True
                 else:
                     _flag = True
@@ -355,7 +357,7 @@ class ProcessingModelType(LoadDatabase):
         iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
         return iou
 
-    def xywhr2xyxyxyxy(
+    def transpose_matrix(
         self,
         class_id: int = None,
         x_center: int | float = 0,
@@ -388,7 +390,7 @@ class ProcessingModelType(LoadDatabase):
         normalized_corners = final_corners / np.array([im_width, im_height])
         return [int(class_id)] + normalized_corners.flatten().tolist()
 
-    def format_params_xywhr2xyxyxyxy(self, des_path, progress_label):
+    def transfer_parameter(self, des_path, progress_label):
         input_folder = des_path
         os.makedirs(os.path.join(input_folder, "instance"), exist_ok=True)
         output_folder = os.path.join(input_folder, "instance")
@@ -410,7 +412,7 @@ class ProcessingModelType(LoadDatabase):
                             continue
                         params = list(map(float, line.split()))
                         class_id, x_center, y_center, width, height, angle = params
-                        converted_label = self.xywhr2xyxyxyxy(
+                        converted_label = self.transpose_matrix(
                             class_id=class_id,
                             x_center=x_center,
                             y_center=y_center,
@@ -429,9 +431,53 @@ class ProcessingModelType(LoadDatabase):
                 os.replace(output_path, input_path)
         shutil.rmtree(output_folder)
 
+    def transfer_parameter_dataset(self, des_path, progress_label):
+        input_folder = des_path
+        os.makedirs(os.path.join(input_folder, "instance"), exist_ok=True)
+        output_folder = os.path.join(input_folder, "instance")
+        
+        txt_files = [f for f in os.listdir(input_folder) if f.endswith(".txt") and f != "classes.txt"]
+        total_fl = len(txt_files)
+        
+        for index, txt_file in enumerate(txt_files):
+            input_path = os.path.join(input_folder, txt_file)
+            im = cv2.imread(f"{input_path[:-3]}jpg")
+            im_height, im_width, _ = im.shape
+            output_path = os.path.join(output_folder, txt_file)
+            
+            with open(input_path, "r") as file:
+                lines = file.readlines()
+            
+            with open(output_path, "w") as out_file:
+                for line in lines:
+                    line = line.strip()
+                    if "YOLO_OBB" in line:
+                        continue
+                    params = list(map(float, line.split()))
+                    class_id, x_center, y_center, width, height, angle = params
+                    converted_label = self.transpose_matrix(
+                            class_id=class_id,
+                            x_center=x_center,
+                            y_center=y_center,
+                            width=width,
+                            height=height,
+                            angle=angle,
+                            im_height=im_height,
+                            im_width=im_width,
+                        )
+                    out_file.write(" ".join(map(str, converted_label)) + "\n")
+            
+            progress_retail = (index + 1) / total_fl * 100
+            progress_label.config(
+                text=f"Converting Format : {progress_retail:.2f}%"
+            )
+            progress_label.update_idletasks()
+            os.replace(output_path, input_path)
+
+        shutil.rmtree(output_folder)
+
     def xyxyxyxy2xywhr_indirect(
-        self, input_image, results, xywhr_list, cls_list, conf_list, model_settings
-    ):
+        self, input_image, results, xywhr_list, cls_list, conf_list, model_settings):
         settings_dict = {setting["label_name"]: setting for setting in model_settings}
         with open(input_image[:-3] + "txt", "a") as out_file:
             out_file.write("YOLO_OBB\n")

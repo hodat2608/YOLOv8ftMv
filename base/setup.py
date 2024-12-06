@@ -60,7 +60,7 @@ def main():
         "--device",
         type=str,
         choices=["cpu", "cuda", "mps"],
-        default=None,
+        default="cpu",
         help="Device to use for training (cpu or cuda).",
     )
     parser.add_argument(
@@ -88,16 +88,14 @@ def main():
         default="auto",
         help="optimizer",
     )
+    parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
+
     args = parser.parse_args()
     if not args.pretrainedmodel:
-        print('pretrained-model')
-        model = YOLO(args.config).load(args.pretrainedmodel)
+        model = YOLO(args.config).load(args.pretrainedmodel).to(args.device)
     else:
-        model = YOLO(args.config)
-    device = (
-        args.device if args.device else ("cuda" if torch.cuda.is_available() else "cpu")
-    )
-    model.to(device)
+        model = YOLO(args.config).to(args.device)
+    
     model.train(
         data=args.data,
         epochs=args.epochs,
@@ -105,11 +103,12 @@ def main():
         imgsz=args.imgsz,
         batch=args.batch,
         cache=args.cache,
-        device=device,
+        device=args.device,
         project=args.project,
         workers=args.workers,
         name=args.name,
         optimizer=args.optimizer,
+        resume=args.resume,
     )
     model.val()
 

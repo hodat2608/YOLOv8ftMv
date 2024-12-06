@@ -17,6 +17,7 @@ import numpy as np
 import cv2
 from base.ultils import *
 from base.ultilss.constants import *
+from base.ultilss.setup import *
 
 class ToolTip:
     def __init__(self, widget, text):
@@ -47,7 +48,7 @@ class ToolTip:
             self.tip_window.destroy()
             self.tip_window = None
 
-class Training_Data(Base):
+class Training_Data(PublicClassInitialization):
     def __init__(self, notebook, window, *args, **kwargs):
         super(Training_Data, self).__init__(*args, **kwargs)
         super().__init__()
@@ -81,8 +82,8 @@ class Training_Data(Base):
         self.window = window
         self.layout_basic()
 
-    def format_params_xywhr2xyxyxyxy(self, des_path, progress_label):
-        return super().format_params_xywhr2xyxyxyxy(des_path, progress_label)
+    def _must_to_format(self, des_path, progress_label):
+        return super().transfer_parameter_dataset(des_path, progress_label)
 
     def get_params_xywhr2xyxyxyxy_original_ops(self, des_path, progress_label):
         return setupTools.get_params_xywhr2xyxyxyxy_original_ops(
@@ -628,7 +629,7 @@ class Training_Data(Base):
         ttk.Label(resume_frame, text="resume:", font=("ubuntu", 12), width=15).grid(
             row=1, column=1, padx=10, pady=5, sticky="w"
         )
-        self.resume = tk.BooleanVar(value=True)
+        self.resume = tk.BooleanVar(value=False)
         ttk.Checkbutton(resume_frame, variable=self.resume).grid(
             row=1, column=2, sticky="w"
         )
@@ -867,7 +868,7 @@ class Training_Data(Base):
                     dst_file = os.path.join(des_path, filename)
                     shutil.copy2(src_file, dst_file)
 
-            self.format_params_xywhr2xyxyxyxy(des_path, progress_label)
+            self._must_to_format(des_path, progress_label)
 
             try:
                 folders = [
@@ -949,6 +950,11 @@ class Training_Data(Base):
             else: 
                 save_result = self.source_save_result_entry.get()
 
+            if pretrained_model != '' or pretrained_model != None and pretrained_model.endswith('last.pt') and not self.resume.get():
+                resume = True
+            else:
+                resume = self.resume.get()
+
             callback = (
                 f"python {self.models_train} "
                 f'--config "{os.path.join(self.models_path,"yolov8.yaml")}" '
@@ -964,11 +970,12 @@ class Training_Data(Base):
                 f"--patience {str(self.patience_model.get())} "
                 f"--cache {str(setupTools.cache_option(self.cache.get()))} "
                 f"--optimizer {str(self.optimizer_model.get())} "
+                f"--resume {resume} "
             )
 
-            self.execute_command(callback)
+            self.execute_command(callback,progress_label)
 
-    def run_command(self, command, current_time):
+    def run_command(self, command, current_time, progress_label):
         process = Popen(
             command, shell=True, stdout=PIPE, stderr=STDOUT, text=True, encoding="utf-8"
         )
@@ -977,11 +984,12 @@ class Training_Data(Base):
             self.console_widget.insert(tk.END, line)
             self.console_widget.see(tk.END)
         time_training = f"{(time.time() - current_time) / 60:.2f} phút"
-        print("time_training:", time_training)
+        progress_label.config(text=f"Total training time: {time_training}")
+        progress_label.update_idletasks()
         process.stdout.close()
         process.wait()
 
-    def execute_command(self, callback):
+    def execute_command(self, callback, progress_label):
         command = callback
         current_time = time.time()
         if command.startswith("pip install"):
@@ -991,6 +999,7 @@ class Training_Data(Base):
             args=(
                 command,
                 current_time,
+                progress_label,
             ),
         ).start()
 

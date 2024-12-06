@@ -616,6 +616,45 @@ class Base(PLC_Connection, setupTools, MySQL_Connection):
                 os.replace(output_path, input_path)
         shutil.rmtree(output_folder)
 
+    def format_parameters_dataset(self, des_path, progress_label):
+        input_folder = des_path
+        os.makedirs(os.path.join(input_folder, "instance"), exist_ok=True)
+        output_folder = os.path.join(input_folder, "instance")
+        
+        txt_files = [f for f in os.listdir(input_folder) if f.endswith(".txt") and f != "classes.txt"]
+        total_fl = len(txt_files)
+        
+        for index, txt_file in enumerate(txt_files):
+            input_path = os.path.join(input_folder, txt_file)
+            im = cv2.imread(f"{input_path[:-3]}jpg")
+            im_height, im_width, _ = im.shape
+            output_path = os.path.join(output_folder, txt_file)
+            
+            with open(input_path, "r") as file:
+                lines = file.readlines()
+            
+            with open(output_path, "w") as out_file:
+                for line in lines:
+                    line = line.strip()
+                    if "YOLO_OBB" in line:
+                        continue
+                    params = list(map(float, line.split()))
+                    class_id, x_center, y_center, width, height, angle = params
+                    converted_label = self.xywhr2xyxyxyxy(
+                        class_id, x_center, y_center, width, height, angle, im_height, im_width
+                    )
+                    out_file.write(" ".join(map(str, converted_label)) + "\n")
+            
+            progress_retail = (index + 1) / total_fl * 100
+            progress_label.config(
+                text=f"Converting YOLO OBB Dataset Format to DOTA Format: {progress_retail:.2f}%"
+            )
+            progress_label.update_idletasks()
+            os.replace(output_path, input_path)
+
+        shutil.rmtree(output_folder)
+
+
     def xyxyxyxy2xywhr_indirect(
         self, input_image, results, xywhr_list, cls_list, conf_list, model_settings
     ):

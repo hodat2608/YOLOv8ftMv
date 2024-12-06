@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import root_path
+from root_path import *
 from ultralytics import YOLO
 from base.ultils import *
 import tkinter as tk
@@ -28,12 +29,14 @@ import queue
 import concurrent.futures
 import keyboard
 from base.ultilss.setup import *
+from base.base_gui import *
 
-
-class Model_Camera_1(PublicClassInitialization):
+class Model_Camera_1(PublicClassInitialization,Base_GUI):
     def __init__(self, notebook, *args, **kwargs):
         super(Model_Camera_1, self).__init__(*args, **kwargs)
         super().__init__(*args, **kwargs)
+        Base_GUI.__init__(self, *args, **kwargs)
+        PublicClassInitialization.__init__(self, *args, **kwargs)
         display_camera_tab = ttk.Frame(notebook)
         notebook.add(display_camera_tab, text="Display Camera")
         self.tab = ttk.Frame(display_camera_tab)
@@ -62,40 +65,7 @@ class Model_Camera_1(PublicClassInitialization):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.name_table = MYSQL_CONNECTION["TABLE 1"]
         self.item_code_cfg = "EDFWOBB"
-        self.image_files = []
-        self.current_image_index = -1
-        self.state = 1
         self.password = "123"
-        self.lockable_widgets = []
-        self.lock_params = []
-        self.model_name_labels = []
-        self.join = []
-        self.ok_vars = []
-        self.ng_vars = []
-        self.num_inputs = []
-        self.wn_inputs = []
-        self.wx_inputs = []
-        self.hn_inputs = []
-        self.hx_inputs = []
-        self.plc_inputs = []
-        self.conf_scales = []
-        self.rn_inputs = []
-        self.rx_inputs = []
-        self.rotage_join = []
-        self.widgets_option_layout_parameters = []
-        self.row_widgets = []
-        self.weights = []
-        self.datasets_format_model = []
-        self.scale_conf_all = None
-        self.size_model = None
-        self.item_code = []
-        self.make_cls_var = False
-        self.permisson_btn = []
-        self.model = None
-        self.time_processing_output = None
-        self.result_detection = None
-        self.cls = False
-        self.img_frame = None
         self.process_image_func = None
         self.processing_functions = {"HBB": self.run_func_hbb, "OBB": self.run_func_obb}
         self.configuration_frame()
