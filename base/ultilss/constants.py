@@ -19,20 +19,37 @@ import pandas as pd
 
 # import pycuda.autoinit
 
-
 class CFG_Table(tk.Tk):
     def __init__(self, frame_n):
         style = ttk.Style()
         style.theme_use("default")
-        style.configure("Treeview.Heading", font=("Arial", 10, "bold"), anchor="center")
-        style.configure("Treeview", rowheight=30, font=("Arial", 10), borderwidth=1)
+        style.configure("Treeview.Heading", font=("Arial", 12, "bold"), anchor="center")
+        style.configure("Treeview", rowheight=30, font=("Arial", 12,"bold"), borderwidth=1)
         style.map("Treeview", background=[("selected", "#ececec")])
         style.configure("Treeview", background="white", foreground="black")
         style.configure("Treeview.Row", background="#f2f2f2", foreground="black")
-        style.map("Treeview", background=[("selected", "#ececec")])
         style.configure("ng_row", foreground="red")
-        self.tree = ttk.Treeview(
-            frame_n,
+
+        self.frame_n = ttk.Frame(frame_n)
+        self.frame_n.pack(fill="both", expand=True)
+
+        self.button_frame = ttk.Frame(frame_n)
+        self.button_frame.pack(fill="x", pady=5)
+        
+        prev_button = ttk.Button(self.button_frame, text="<", command=self.show_prev)
+        next_button = ttk.Button(self.button_frame, text=">", command=self.show_next)
+        prev_button.pack(side="left", padx=5)
+        next_button.pack(side="left", padx=5)
+
+        self.sheet_1()
+        self.sheet_2()
+
+        self.current_layout = 1
+        self.show_layout(self.current_layout)
+
+    def sheet_1(self):
+        self.treeview_sheet1 = ttk.Treeview(
+            self.frame_n,
             columns=(
                 "No.",
                 "Default_X",
@@ -45,49 +62,141 @@ class CFG_Table(tk.Tk):
             show="headings",
             height=5,
         )
-        self.tree.heading("No.", text="No.", anchor="center")
-        self.tree.heading("Default_X", text="Default_X", anchor="center")
-        self.tree.heading("Default_Y", text="Default_Y", anchor="center")
-        self.tree.heading("Result_X", text="Result_X", anchor="center")
-        self.tree.heading("Result_Y", text="Result_Y", anchor="center")
-        self.tree.heading("Angle", text="Angle", anchor="center")
-        self.tree.heading("Status", text="Status", anchor="center")
-        self.tree.column("No.", width=50, anchor="center")
-        self.tree.column("Default_X", width=170, anchor="center")
-        self.tree.column("Default_Y", width=170, anchor="center")
-        self.tree.column("Result_X", width=170, anchor="center")
-        self.tree.column("Result_Y", width=170, anchor="center")
-        self.tree.column("Angle", width=100, anchor="center")
-        self.tree.column("Status", width=80, anchor="center")
-        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+        self.treeview_sheet1.heading("No.", text="No.", anchor="center")
+        self.treeview_sheet1.heading("Default_X", text="Thang đo x", anchor="center")
+        self.treeview_sheet1.heading("Default_Y", text="Thang đo y", anchor="center")
+        self.treeview_sheet1.heading("Result_X", text="Vị trí x", anchor="center")
+        self.treeview_sheet1.heading("Result_Y", text="Vị trí y", anchor="center")
+        self.treeview_sheet1.heading("Angle", text="Góc", anchor="center")
+        self.treeview_sheet1.heading("Status", text="Trạng thái", anchor="center")
+        self.treeview_sheet1.column("No.", width=50, anchor="center")
+        self.treeview_sheet1.column("Default_X", width=170, anchor="center")
+        self.treeview_sheet1.column("Default_Y", width=170, anchor="center")
+        self.treeview_sheet1.column("Result_X", width=170, anchor="center")
+        self.treeview_sheet1.column("Result_Y", width=170, anchor="center")
+        self.treeview_sheet1.column("Angle", width=170, anchor="center")
+        self.treeview_sheet1.column("Status", width=80, anchor="center")
+        self.treeview_sheet1.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def __call__(self, data):
+    def sheet_2(self): 
+        self.treeview_sheet2 = ttk.Treeview(
+            self.frame_n,
+            columns=(
+                "No.",
+                "category",
+                "diff_x",
+                "diff_y",
+                "diff_rad",
+                "percent",
+                "status",
+            ),
+            show="headings",
+            height=5,
+        )
+        self.treeview_sheet2.heading("No.", text="No.", anchor="center")
+        self.treeview_sheet2.heading("category", text="Hạng mục đo", anchor="center")
+        self.treeview_sheet2.heading("diff_x", text="Độ lệch trục x", anchor="center")
+        self.treeview_sheet2.heading("diff_y", text="Độ lệch trục y", anchor="center")
+        self.treeview_sheet2.heading("diff_rad", text="Độ lệch góc", anchor="center")
+        self.treeview_sheet2.heading("percent", text="Độ tương đồng", anchor="center")
+        self.treeview_sheet2.heading("status", text="Trạng thái", anchor="center")
+        self.treeview_sheet2.column("No.", width=50, anchor="center")
+        self.treeview_sheet2.column("category", width=170, anchor="center")
+        self.treeview_sheet2.column("diff_x", width=170, anchor="center")
+        self.treeview_sheet2.column("diff_y", width=170, anchor="center")
+        self.treeview_sheet2.column("diff_rad", width=170, anchor="center")
+        self.treeview_sheet2.column("percent", width=170, anchor="center")
+        self.treeview_sheet2.column("status", width=80, anchor="center")
+
+    def call_sheet1(self, data):
         if data:
-            for row in self.tree.get_children():
-                self.tree.delete(row)
+            for row in self.treeview_sheet1.get_children():
+                self.treeview_sheet1.delete(row)
         for row in data:
             No = row[0]
-            Default_X = f"{round(row[3],1)}"
-            Default_Y = f"{round(row[4],1)}"
-            Detect_X = f"{round(row[1],1)}"
-            Detect_Y = f"{round(row[2],1)}"
+            Default_X = round(row[3],1)
+            Default_Y = round(row[4],1)
+            Detect_X = round(row[1],1)
+            Detect_Y = round(row[2],1)
             Angle = f"{row[5]}°"
             State = row[6]
             if State == "NG":
-                self.tree.insert(
+                self.treeview_sheet1.insert(
                     "",
                     "end",
                     values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State),
                     tags=("ng_row",),
                 )
             else:
-                self.tree.insert(
+                self.treeview_sheet1.insert(
                     "",
                     "end",
                     values=(No, Default_X, Default_Y, Detect_X, Detect_Y, Angle, State),
                 )
-        self.tree.tag_configure("ng_row", foreground="red")
+        self.treeview_sheet1.tag_configure("ng_row", foreground="red")
+    
+    def call_sheet2(self, data):
+        if data:
+            for row in self.treeview_sheet2.get_children():
+                self.treeview_sheet2.delete(row)
+        for row in data:
+            catory = row[8]
+            No = row[0]
+            row_7 = row[7] if row[7]>0 else -((row[7]))
+            Angle = f"{round(row_7-row[5],1)}°"
+            State = row[6]
+            diff_x =  round(row[3]-row[1],1)
+            diff_y = round(row[4]-row[2],1)
+            percent = self.diff_all(row[3],row[4],row[1],row[2],row_7,row[5])
+            if State == "NG":
+                self.treeview_sheet2.insert(
+                    "",
+                    "end",
+                    values=(No, catory, diff_x, diff_y, Angle, f'{round(percent,1)}%', State),
+                    tags=("ng_row",),
+                )
+            else:
+                self.treeview_sheet2.insert(
+                    "",
+                    "end",
+                    values=(No, catory, diff_x, diff_y, Angle, f'{round(percent,1)}%', State),
+                )
+        self.treeview_sheet2.tag_configure("ng_row", foreground="red")
 
+    def diff_all(self, x_A, y_A, x_B, y_B, angle_A, angle_B):
+        diff_x = abs(x_B - x_A) / x_A * 100
+        diff_y = abs(y_B - y_A) / y_A * 100
+        diff_angle = abs(angle_B - angle_A) / angle_A * 100
+        return 100 - (diff_x + diff_y + diff_angle) / 3
+    
+    def show_layout(self, layout_number):
+        for widget in self.frame_n.winfo_children():
+            widget.pack_forget()
+        
+        if layout_number == 1:
+            self.treeview_sheet1.pack(fill="both", expand=True, padx=10, pady=10)
+        elif layout_number == 2:
+            self.treeview_sheet2.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def update_data(self, data):
+        if self.current_layout == 1:
+            self.call_sheet1(data)
+        elif self.current_layout == 2:
+            self.call_sheet2(data)
+
+    def show_next(self):
+        self.current_layout = 2
+        self.show_layout(self.current_layout)
+        self.call_sheet2(self.data)
+
+    def show_prev(self):
+        self.current_layout = 1
+        self.show_layout(self.current_layout)
+        self.call_sheet1(self.data)
+
+    def set_data(self, data):
+        self.data = data
+        self.update_data(self.data)
 
 class setupTools:
 
@@ -347,12 +456,12 @@ class setupTools:
             23: ITEM_23, 24: ITEM_24, 25: ITEM_25, 26: ITEM_26, 27: ITEM_27,
             28: ITEM_28, 29: ITEM_29, 30: ITEM_30
         }
-        return {id: values[:2] for id, values in _data_id_lists.items()}
+        return {id: values[:2] + [values[-1]] for id, values in _data_id_lists.items()}
 
     def _get_lc_object(self,dict,x,y):
-        for id, (x_c, y_c) in dict.items():
+        for id, (x_c, y_c , r_c) in dict.items():
             if abs(x_c - x) <= THRESHOLD and abs(y_c - y) <= THRESHOLD:
-                return [id,[x,y],[x_c,y_c]]
+                return [id,[x,y],[x_c,y_c],[r_c]]
     
     # @staticmethod
     def _get_lc_state(self,id,x,y,x_c,y_c):

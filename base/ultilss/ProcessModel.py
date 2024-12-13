@@ -235,7 +235,7 @@ class ProcessingModelType(LoadDatabase):
                     lst_check_location.append(
                         (d[0],d[1][0],d[1][1],d[2][0],d[2][1], 
                         round(math.degrees(xywhr[4]),1),
-                        'OK' if d[3][0] else 'NG')
+                        'OK' if d[3][0] else 'NG',c[3][0],ITEM[0])
                     )
                     if not d[3][0]:
                         _flag = True

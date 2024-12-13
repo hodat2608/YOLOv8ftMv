@@ -367,10 +367,10 @@ class Model_Camera_1(PublicClassInitialization,Base_GUI):
                     fill="red",
                     font=("Segoe UI", 20),
                 )
-            self.table(valid)
+            self.table.set_data(valid)
             os.remove(filename)
 
-    def layout_camframe(self):
+    def layout_camframe_default(self):
         style = ttk.Style()
         style.configure("Custom.TLabelframe", borderwidth=0)
         style.configure(
@@ -455,6 +455,105 @@ class Model_Camera_1(PublicClassInitialization,Base_GUI):
         frame.grid_rowconfigure(0, weight=1)
         frame.grid_rowconfigure(1, weight=1)
 
+    def layout_camframe(self):
+        screen_width = self.settings_notebook.winfo_screenwidth()
+        screen_height = self.settings_notebook.winfo_screenheight()
+
+        style = ttk.Style()
+        style.configure("Custom.TLabelframe", borderwidth=0)
+        style.configure(
+            "Custom.TLabelframe.Label", background="white", foreground="white"
+        )
+
+        canvas = tk.Canvas(self.tab)
+        scrollbar_y = tk.Scrollbar(self.tab, orient="vertical", command=canvas.yview)
+        scrollbar_x = tk.Scrollbar(self.tab, orient="horizontal", command=canvas.xview)
+        content_frame = ttk.Frame(canvas)
+        content_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=content_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar_y.set)
+        canvas.configure(xscrollcommand=scrollbar_x.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar_y.grid(row=0, column=1, sticky="ns")
+        scrollbar_x.grid(row=1, column=0, sticky="ew")
+
+        self.tab.grid_rowconfigure(0, weight=1)
+        self.tab.grid_columnconfigure(0, weight=1)
+
+        frame_width = int(screen_width * 0.42) 
+        frame_height = int(screen_height * 0.78)  
+
+        frame = ttk.LabelFrame(
+            content_frame, style="Custom.TLabelframe"
+        )
+        frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        self.img_frame = ttk.LabelFrame(
+            frame, text=f"Camera", width=frame_width, height=frame_height
+        )
+        self.img_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+        self.canvas_i = tk.Canvas(
+            self.img_frame, width=frame_width, height=frame_height
+        )
+        self.canvas_i.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+
+        time_frame = ttk.LabelFrame(
+            frame, text=f"Time Processing Camera", width=frame_width // 3
+        )
+        time_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.time_processing_output = tk.Label(
+            time_frame,
+            text="0 ms",
+            fg="black",
+            font=("Segoe UI", int(frame_width // 30)),
+            anchor="center",
+        )
+        self.time_processing_output.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+
+        result = ttk.LabelFrame(frame, text=f"Result Camera", width=frame_width // 3)
+        result.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.result_detection = tk.Label(
+            result,
+            text="ERROR",
+            fg="red",
+            font=("Segoe UI", int(frame_width // 30)),
+            anchor="center",
+        )
+        self.result_detection.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+
+        bonus = ttk.LabelFrame(frame, text=f"Bonus", width=frame_width // 3)
+        bonus.grid(row=1, column=2, padx=10, pady=5, sticky="ew")
+        bonus_test = tk.Label(
+            bonus,
+            text="Bonus",
+            fg="red",
+            font=("Segoe UI", int(frame_width // 30)),
+            anchor="center",
+        )
+        bonus_test.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+
+        move = tk.Button(
+            bonus,
+            text="Test time handle",
+            command=lambda: self.write_plc_value_to_file_btn(),
+        )
+        move.grid(row=0, column=1, padx=(0, 8), pady=3, sticky="w", ipadx=5, ipady=2)
+
+        self.frame_table = ttk.LabelFrame(
+            content_frame, style="Custom.TLabelframe"
+        )
+        self.frame_table.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_columnconfigure(2, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+
+
     def configuration_frame(self):
         (
             records,
@@ -503,8 +602,11 @@ class Model_Camera_1(PublicClassInitialization,Base_GUI):
         configuration_frame_tab.grid_columnconfigure(0, weight=1)
         configuration_frame_tab.grid_rowconfigure(0, weight=1)
 
-        frame_width = 1500
-        frame_height = 2000
+        screen_width = self.settings_notebook.winfo_screenwidth()
+        screen_height = self.settings_notebook.winfo_screenheight()
+
+        frame_width = int(screen_width * 0.46875)
+        frame_height = int(screen_height * 0.8333)
 
         Frame_1 = ttk.LabelFrame(
             scrollable_frame, text="Option", width=frame_width, height=frame_height
