@@ -44,7 +44,7 @@ class CFG_Table(tk.Tk):
         self.sheet_1()
         self.sheet_2()
 
-        self.current_layout = 1
+        self.current_layout = 2
         self.show_layout(self.current_layout)
 
     def sheet_1(self):

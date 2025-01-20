@@ -84,7 +84,7 @@ class Base(PLC_Connection, setupTools, MySQL_Connection):
         self.datasets_format_model = None
         self.process_image_func = None
         self.processing_functions = {"HBB": self.run_func_hbb, "OBB": self.run_func_obb}
-        self.tuple = self.track_conn()
+        self.tuple = self._get_lc_item()
         self.img_buffer = []
         self.counter = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

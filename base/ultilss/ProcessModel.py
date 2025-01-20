@@ -103,7 +103,9 @@ class ProcessingModelType(LoadDatabase):
         self.counter += 1
         size_model_all = int(self.size_model.get())
         conf_all = int(self.scale_conf_all.get()) / 100
-        # source, fh = self.preprocess(source)
+        '''
+        source, fh = self.preprocess(source)
+        '''
         results = self.model(source, imgsz=size_model_all, conf=conf_all)
         self._default_settings()
         settings_dict = {
@@ -183,10 +185,12 @@ class ProcessingModelType(LoadDatabase):
                         list_cls_ng.append(setting["label_name"])
                         _invalid_idex.append(int(index))
         lst_result = "OK" if not _flag else "NG"
-        # if not fh:
-        #     if self.counter == 6:
-        #         self.writedata(self.socket, self.complete, 1)
-        #         self.counter = 0
+        '''
+        if not fh:
+            if self.counter == 6:
+                self.writedata(self.socket, self.complete, 1)
+                self.counter = 0
+        '''
         if self.make_cls_var.get():
             self.xyxyxyxy2xywhr_indirect(
                 source, results[0], _xywhr, _cls, _conf, self.default_model_params
@@ -356,6 +360,43 @@ class ProcessingModelType(LoadDatabase):
         b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
         iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
         return iou
+    
+    def transpose_matrix_torch(
+        class_id: int = None,
+        x_center: int | float = 0,
+        y_center: int | float = 0,
+        width: int | float = 0,
+        height: int | float = 0,
+        angle: int | float = 0,
+        im_height: int = 0,
+        im_width: int = 0,
+    ):
+        dx = width / 2
+        dy = height / 2
+
+        angle_rad = torch.deg2rad(torch.tensor(angle, dtype=torch.float64))
+
+        rotation_matrix = torch.tensor(
+            [
+                [torch.cos(angle_rad), -torch.sin(angle_rad)],
+                [torch.sin(angle_rad),  torch.cos(angle_rad)],
+            ],
+            dtype=torch.float64,
+        )
+        corners = torch.tensor([
+                [-dx, -dy],
+                [ dx, -dy],
+                [ dx,  dy],
+                [-dx,  dy],
+        ], dtype=torch.float64)
+
+        rotated_corners = torch.matmul(corners, rotation_matrix)
+
+        final_corners = rotated_corners + torch.tensor([x_center, y_center], dtype=torch.float64)
+
+        normalized_corners = final_corners / torch.tensor([im_width, im_height], dtype=torch.float64)
+        
+        return [int(class_id)] + normalized_corners.flatten().tolist()
 
     def transpose_matrix(
         self,
